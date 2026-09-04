@@ -1,0 +1,3 @@
+name: codex-openai
+interface: cli
+# Optional Codex sidecar. The viewer lists this file; it never writes it.

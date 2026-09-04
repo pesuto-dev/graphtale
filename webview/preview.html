@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" class="preview-harness">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Graphtale - browser preview</title>
+    <script>
+      // Must run before any module that calls acquireVsCodeApi().
+      (function () {
+        var pending = [];
+        var handler = null;
+        function deliver(data) {
+          var event = new MessageEvent("message", { data: data });
+          if (handler) {
+            handler(event);
+          } else {
+            pending.push(event);
+          }
+        }
+        globalThis.acquireVsCodeApi = function () {
+          return {
+            postMessage: function (message) {
+              if (!message || typeof message !== "object") {
+                return;
+              }
+              if (message.type === "ready" || message.type === "refresh") {
+                import("./preview-data.json").then(function (mod) {
+                  deliver(mod.default || mod);
+                });
+              }
+              if (message.type === "selectNode") {
+                deliver({
+                  type: "fileContent",
+                  payload: {
+                    nodeId: message.nodeId,
+                    path: "(preview)",
+                    text: "Preview harness: open a real skill in the extension to edit files.\n\nSelected: " +
+                      message.nodeId,
+                  },
+                });
+              }
+              if (message.type === "setDirection") {
+                deliver({ type: "direction", direction: message.direction });
+              }
+              if (message.type === "copyText" && typeof message.text === "string") {
+                var text = message.text;
+                function ok() {
+                  deliver({ type: "copyResult", ok: true });
+                }
+                function fail() {
+                  deliver({ type: "copyResult", ok: false });
+                }
+                function fallbackCopy() {
+                  try {
+                    var ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.setAttribute("readonly", "");
+                    ta.style.position = "fixed";
+                    ta.style.left = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    var copied = document.execCommand("copy");
+                    document.body.removeChild(ta);
+                    if (copied) {
+                      ok();
+                    } else {
+                      fail();
+                    }
+                  } catch (err) {
+                    fail();
+                  }
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  var timer = setTimeout(fallbackCopy, 400);
+                  navigator.clipboard.writeText(text).then(
+                    function () {
+                      clearTimeout(timer);
+                      ok();
+                    },
+                    function () {
+                      clearTimeout(timer);
+                      fallbackCopy();
+                    },
+                  );
+                } else {
+                  fallbackCopy();
+                }
+              }
+            },
+            getState: function () {
+              return undefined;
+            },
+            setState: function () {},
+          };
+        };
+        // Capture the App's listener even if it registers before our first post.
+        var originalAdd = window.addEventListener.bind(window);
+        window.addEventListener = function (type, listener, options) {
+          if (type === "message" && typeof listener === "function") {
+            handler = listener;
+            pending.forEach(function (event) {
+              listener(event);
+            });
+            pending = [];
+          }
+          return originalAdd(type, listener, options);
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./preview-main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+{
+  "name": "graphtale",
+  "displayName": "Graphtale - Agent Skill Flow",
+  "description": "See the intended runtime of an Agent Skill from the SKILL.md you already wrote, without changing the files.",
+  "version": "0.0.1",
+  "publisher": "pesuto",
+  "author": {
+    "name": "pesuto",
+    "email": "ben@pesuto.dev",
+    "url": "https://pesuto.dev"
+  },
+  "homepage": "https://pesuto.dev/",
+  "bugs": "https://github.com/pesuto-dev/graphtale/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pesuto-dev/graphtale.git"
+  },
+  "private": false,
+  "license": "Apache-2.0",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1a2332",
+    "theme": "dark"
+  },
+  "keywords": [
+    "skill",
+    "skills",
+    "agent skills",
+    "agent-skills",
+    "SKILL.md",
+    "skill.md",
+    "claude skills",
+    "cursor skills",
+    "flow",
+    "visualization",
+    "cursor",
+    "claude",
+    "codex"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "graphtale.openViewer",
+        "title": "Open Agent Skill Flow",
+        "icon": "$(type-hierarchy)",
+        "category": "Graphtale"
+      },
+      {
+        "command": "graphtale.refresh",
+        "title": "Refresh open skill",
+        "icon": "$(refresh)",
+        "category": "Graphtale"
+      },
+      {
+        "command": "graphtale.refreshTree",
+        "title": "Refresh Skills",
+        "icon": "$(refresh)",
+        "category": "Graphtale"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "graphtale.openViewer",
+          "when": "resourceFilename == SKILL.md",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "graphtale.openViewer",
+          "when": "resourceFilename == SKILL.md",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "graphtale.openViewer",
+          "when": "view == graphtale.skills",
+          "group": "navigation@1"
+        },
+        {
+          "command": "graphtale.refreshTree",
+          "when": "view == graphtale.skills",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "graphtale",
+          "title": "Graphtale",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "graphtale": [
+        {
+          "id": "graphtale.skills",
+          "name": "Skills"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "graphtale.skills",
+        "contents": "No Agent Skills found here.\nOpen a SKILL.md from the explorer, or add a skill under `.cursor/skills`, `.claude/skills`, `.codex/skills`, or `.agents/skills` (workspace or home).\n[Open Agent Skill Flow](command:graphtale.openViewer)"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "npm run compile:host && npm run compile:webview",
+    "compile:host": "node esbuild.mjs",
+    "compile:webview": "vite build",
+    "watch:host": "node esbuild.mjs --watch",
+    "watch:webview": "vite build --watch",
+    "preview:data": "npx tsx scripts/generate-preview-data.ts",
+    "preview": "npm run preview:data && vite --open '/preview.html?view=flow'",
+    "check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit",
+    "test": "vitest run",
+    "validate": "npx tsx scripts/validate-skills.ts",
+    "screenshots": "npm run compile:webview && npx tsx scripts/capture-marketplace-screenshots.ts",
+    "screenshots:demos": "npx tsx scripts/capture-marketplace-screenshots.ts --demos",
+    "package": "npm run compile && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.5",
+    "@xyflow/react": "^12.8.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.3",
+    "yaml": "2.9.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2",
+    "@types/node": "^22.13.10",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/vscode": "^1.90.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.25.2",
+    "playwright": "^1.62.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2",
+    "vitest": "^3.0.9"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.3": true
+  }
+}

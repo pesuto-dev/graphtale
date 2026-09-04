@@ -1,0 +1,883 @@
+:root {
+  --bg: var(--vscode-editor-background, #1e1e1e);
+  --fg: var(--vscode-foreground, #cccccc);
+  --muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --border: var(--vscode-panel-border, #3c3c3c);
+  --fill: var(--vscode-editorWidget-background, #252526);
+  --elevated: var(--vscode-sideBar-background, #252526);
+  --accent: var(--vscode-focusBorder, #007fd4);
+  --edge: var(--vscode-charts-green, #89d185);
+  --skill: var(--vscode-charts-yellow, #cca700);
+  /* Teal — distinct from script orange (they previously shared one color). */
+  --agent: var(--vscode-charts-green, #3dc9a5);
+  --reference: var(--vscode-charts-blue, #75beff);
+  --script: var(--vscode-charts-orange, #d18616);
+  --shared: var(--vscode-disabledForeground, #8a8a8a);
+  --gate: var(--vscode-charts-blue, #75beff);
+  --font: var(--vscode-font-family, sans-serif);
+  --mono: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--fill);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+button:hover,
+button.active {
+  border-color: var(--accent);
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34%);
+  height: 100%;
+}
+
+/* Browser preview: more room for the graph, less for the inspector. */
+html.preview-harness .app {
+  grid-template-rows: auto minmax(0, 1fr) minmax(140px, 22%);
+}
+
+.toolbar,
+.inspector-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--elevated) 88%, transparent);
+}
+
+.toolbar h1,
+.inspector h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.title-row,
+.inspector-actions,
+.inspector-meta,
+.toolbar-stats,
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-tabs {
+  margin-top: 8px;
+}
+
+.view-tabs button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.view-tabs button.active {
+  background: color-mix(in srgb, var(--accent) 22%, var(--fill));
+  border-color: var(--accent);
+}
+
+.diagnosis-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fill) 92%, transparent);
+}
+
+.diagnosis-banner.confidence-partial {
+  border-color: color-mix(in srgb, var(--agent) 55%, var(--border));
+}
+
+.diagnosis-banner.confidence-none {
+  border-color: color-mix(in srgb, var(--muted) 70%, var(--border));
+}
+
+.diagnosis-copy {
+  min-width: 0;
+}
+
+.diagnosis-copy strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.diagnosis-copy p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.diagnosis-copy .diagnosis-hint {
+  color: var(--muted);
+}
+
+.fix-prompt-text {
+  margin: 8px 0 0;
+  max-height: 7.5em;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fix-prompt-btn {
+  flex-shrink: 0;
+  border-color: var(--accent);
+}
+
+.hint,
+.path,
+.summary {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.toolbar-stats .stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 52px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--fill);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.toolbar-stats .stat strong {
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.refresh-btn {
+  border-color: var(--accent);
+}
+
+.refresh-btn.is-stale {
+  background: var(--accent);
+  color: var(--vscode-button-foreground, #fff);
+  border-color: var(--accent);
+  font-weight: 650;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  min-height: 0;
+}
+
+.main.main-procedure {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Flex (not 3-row grid): diagnosis banner is optional. With
+   `grid-template-rows: auto 1fr auto` and only 2 children, `.graph`
+   landed in the auto row (height 0) and `.legend` ate the 1fr. */
+.graph-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  gap: 0;
+  padding: 10px 10px 0;
+}
+
+.graph {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.graph-pane > .diagnosis-banner,
+.graph-pane > .legend {
+  flex: 0 0 auto;
+}
+
+.inventory {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 4px 6px 0;
+}
+
+.inventory-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.inventory-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.inventory-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px 16px;
+}
+
+.inventory-empty {
+  margin: 24px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.inventory-empty code {
+  font-size: 12px;
+}
+
+.inventory-group + .inventory-group {
+  margin-top: 16px;
+}
+
+.inventory-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.inventory-group-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inventory-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inventory-row {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.inventory-row:hover {
+  background: var(--fill);
+  border-color: var(--border);
+}
+
+.inventory-row.is-selected {
+  background: color-mix(in srgb, var(--fill) 70%, var(--bg));
+  border-color: var(--accent);
+}
+
+.inventory-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inventory-label {
+  font-weight: 600;
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-kind {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inventory-summary {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding-left: 18px;
+}
+
+.inventory-path {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.85;
+  padding-left: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.react-flow__node.rf-compact .skill-node {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px 8px;
+  box-sizing: border-box;
+}
+
+.react-flow__node.rf-compact .skill-node.is-compact {
+  min-height: 0;
+}
+
+.react-flow__node.rf-compact .skill-node.shape-hex {
+  min-width: 0;
+  border-width: 1.5px;
+  box-shadow: inset 2px 0 0 var(--agent);
+  background: color-mix(in srgb, var(--agent) 12%, var(--fill));
+}
+
+.react-flow__node.rf-compact .skill-node-body-compact {
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+}
+
+.react-flow__node.rf-compact .skill-node-title-row {
+  gap: 6px;
+}
+
+.react-flow__node.rf-compact .skill-node-title {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.react-flow__node.rf-compact .skill-node-meta {
+  display: none;
+}
+
+.react-flow__node.rf-compact .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  opacity: 0.35;
+}
+
+.react-flow__node.rf-compact .skill-node.shape-diamond {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.graph .react-flow {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+}
+
+.react-flow__node {
+  overflow: visible !important;
+}
+
+.react-flow__node.selected,
+.react-flow__node.rf-expanded {
+  z-index: 8 !important;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.inspector {
+  border-top: 1px solid var(--border);
+  overflow: auto;
+  padding: 12px 16px 16px;
+  background: color-mix(in srgb, var(--elevated) 55%, var(--bg));
+}
+
+.inspector-head {
+  margin-bottom: 10px;
+}
+
+.callout {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--fill);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.callout.muted {
+  border-left-color: var(--border);
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.md {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.md pre,
+.dim {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--fill);
+  padding: 8px 10px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.dim {
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.uses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.chip {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--fill);
+  color: var(--fg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+button.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+button.chip:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.chip-link {
+  cursor: pointer;
+}
+
+.chip-link:hover {
+  border-color: var(--accent);
+}
+
+.outgoing {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.status-pill,
+.stat-pill {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+  background: var(--fill);
+  white-space: nowrap;
+}
+
+.status-pill.on {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.status-pill.wait {
+  color: var(--accent);
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-line {
+  width: 18px;
+  height: 0;
+  border-top: 2px solid var(--edge);
+}
+
+.legend-line.dashed {
+  border-top-style: dashed;
+  border-top-color: var(--muted);
+}
+
+.shape-mark {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.shape-mark.shape-pill {
+  width: 16px;
+  height: 8px;
+  border-radius: 99px;
+}
+
+.shape-mark.shape-rect {
+  width: 12px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.shape-mark.shape-hex {
+  width: 12px;
+  height: 11px;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  border-radius: 0;
+}
+
+.shape-mark.shape-diamond {
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+}
+
+.shape-mark.kind-skill {
+  color: var(--skill);
+}
+
+.shape-mark.kind-agent {
+  color: var(--agent);
+}
+
+.shape-mark.kind-script {
+  color: var(--script);
+}
+
+.shape-mark.kind-reference {
+  color: var(--reference);
+}
+
+.shape-mark.kind-shared {
+  color: var(--shared);
+}
+
+.shape-mark.kind-gate {
+  color: var(--gate);
+}
+
+.skill-node {
+  position: relative;
+  width: 188px;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, var(--elevated) 92%, var(--bg));
+  color: var(--fg);
+  letter-spacing: 0.01em;
+}
+
+.skill-node.shape-pill {
+  border-radius: 999px;
+}
+
+.skill-node.shape-rect {
+  border-radius: 10px;
+}
+
+.skill-node.shape-hex {
+  border-radius: 12px;
+  border-width: 2px;
+  background: color-mix(in srgb, var(--agent) 16%, var(--fill));
+  box-shadow: inset 3px 0 0 var(--agent);
+  min-width: 168px;
+}
+
+.skill-node.shape-diamond {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  border-radius: 0;
+}
+
+.skill-node.kind-skill {
+  border-color: var(--skill);
+}
+
+.skill-node.kind-agent {
+  border-color: var(--agent);
+  color: color-mix(in srgb, var(--fg) 92%, var(--agent));
+}
+
+.skill-node.kind-script {
+  border-color: var(--script);
+}
+
+.skill-node.kind-reference {
+  border-color: var(--reference);
+}
+
+.skill-node.kind-shared {
+  border-color: var(--shared);
+}
+
+.skill-node.kind-gate {
+  border-color: var(--gate);
+}
+
+.skill-node.shape-diamond .skill-node-title,
+.skill-node.shape-diamond .skill-node-meta {
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+.skill-node.is-entry,
+.skill-node.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--fill) 80%, var(--bg));
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.skill-node.is-entry {
+  font-weight: 650;
+  outline: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.skill-node.is-pending {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+.skill-node-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+}
+
+.skill-node-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.skill-node-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-node.is-entry .skill-node-title {
+  font-weight: 700;
+}
+
+.skill-node-meta {
+  font-size: 11px;
+  color: var(--muted);
+  padding-left: 22px;
+}
+
+.skill-node-meta .agent-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--agent);
+}
+
+.expand-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expand-btn:hover {
+  color: var(--fg);
+  border-color: transparent;
+}
+
+.skill-node-expand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 4;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent);
+}
+
+.skill-node-summary {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.skill-node-uses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.react-flow__edge-path {
+  stroke: var(--edge);
+}
+
+.edge-inferred .react-flow__edge-path {
+  stroke-dasharray: 5 4;
+}
+
+.edge-pending .react-flow__edge-path {
+  stroke: var(--accent);
+}
+
+/* Compact Procedure: thicker, higher-contrast connectors. */
+.edge-compact .react-flow__edge-path {
+  stroke-width: 2.4;
+}
+
+.edge-compact.edge-inferred .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--muted) 35%, var(--fg));
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.edge-compact.edge-explicit .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--edge) 70%, #ffffff);
+  stroke-width: 2.5;
+}
+
+.edge-compact .react-flow__edge-text {
+  font-size: 10px;
+  font-weight: 650;
+  fill: var(--fg);
+}
+
+.react-flow__minimap {
+  background: var(--fill) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: var(--fill) !important;
+  border-bottom-color: var(--border) !important;
+  fill: var(--fg) !important;
+}

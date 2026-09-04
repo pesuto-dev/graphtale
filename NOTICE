@@ -1,0 +1,17 @@
+Graphtale
+Copyright 2026 Ben van den Berge
+
+Licensed under the Apache License, Version 2.0.
+http://www.apache.org/licenses/LICENSE-2.0
+
+The Pesuto name and logo, and the Graphtale name, are not licensed
+under Apache-2.0. You may fork and redistribute the software; you may
+not use the Pesuto or Graphtale names or logos to imply you are the
+official source, except to describe origin ("based on Graphtale").
+
+Third-party notices
+===================
+
+Bundled or linked MIT-licensed libraries include @xyflow/react,
+@dagrejs/dagre, React, esbuild, and Vite. See package.json for versions.
+The yaml parser is ISC-licensed (package `yaml`).

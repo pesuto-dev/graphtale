@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.vsix
+.vscode-test/
+.DS_Store
+*.canvas.data.json
+webview/preview-data.json
+assets/demo-skills/*.png
+
+# Local copies of installed skills (regenerate via scripts/sync-user-skills.sh).
+# Keep README; ignore the bulk so vendor/user trees are not committed by accident.
+fixtures/user-skills/claude/
+fixtures/user-skills/agents/
+fixtures/user-skills/MANIFEST.json
