@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
+import { readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
 import type { CatalogSkill } from "./shared/protocol";
 
 export const WORKSPACE_SKILL_DIRS = [
@@ -24,6 +25,7 @@ const SKILL_FILE = "SKILL.md";
 export type DiscoverOptions = {
   workspaceFolders: string[];
   homedir?: string;
+  onWarning?: (message: string) => void;
 };
 
 export type Frontmatter = {
@@ -47,7 +49,9 @@ export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
 
   const byPath = new Map<string, CatalogSkill>();
   for (const root of roots) {
-    for (const skill of listSkillsIn(root)) {
+    if (byPath.size >= INVENTORY_MAX_FILES) { options.onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills.`); break; }
+    for (const skill of listSkillsIn(root, options.onWarning)) {
+      if (byPath.size >= INVENTORY_MAX_FILES) break;
       const key = path.resolve(skill.rootPath);
       if (!byPath.has(key)) {
         byPath.set(key, skill);
@@ -57,18 +61,22 @@ export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
   return [...byPath.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function listSkillsIn(root: string): CatalogSkill[] {
+function listSkillsIn(root: string, onWarning?: (message: string) => void): CatalogSkill[] {
   if (!isDirectory(root)) {
     return [];
   }
-  let entries: fs.Dirent[];
+  const entries: fs.Dirent[] = [];
+  let directory: fs.Dir | undefined;
   try {
-    entries = fs.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return [];
-  }
+    directory = fs.opendirSync(root);
+    let entry: fs.Dirent | null;
+    while (entries.length < INVENTORY_MAX_ENTRIES && (entry = directory.readSync())) entries.push(entry);
+    if (entries.length === INVENTORY_MAX_ENTRIES) onWarning?.(`Skill discovery reached its entry limit in ${root}.`);
+  } catch { onWarning?.(`Could not discover skills in ${root}.`); return []; }
+  finally { directory?.closeSync(); }
   const skills: CatalogSkill[] = [];
   for (const entry of entries) {
+    if (skills.length >= INVENTORY_MAX_FILES) { onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills in ${root}.`); break; }
     if (!entry.isDirectory()) {
       continue;
     }
@@ -94,7 +102,7 @@ function listSkillsIn(root: string): CatalogSkill[] {
 
 export function readFrontmatter(skillFile: string): Frontmatter {
   try {
-    const text = fs.readFileSync(skillFile, "utf8");
+    const text = readRequiredText(skillFile);
     return parseFrontmatter(text);
   } catch (err) {
     return {
@@ -117,7 +125,7 @@ export function parseFrontmatter(text: string): Frontmatter {
     return {
       name: "",
       description: "",
-      error: err instanceof Error ? err.message : "Invalid YAML frontmatter",
+      error: "Invalid YAML frontmatter. Check its syntax in SKILL.md.",
     };
   }
   if (!parsed || typeof parsed !== "object") {

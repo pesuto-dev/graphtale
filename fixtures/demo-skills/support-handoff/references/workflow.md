@@ -26,3 +26,15 @@ Build the ReportDraft. `schemas/report.schema.json` is the shape;
 ## N5v — review
 
 Refute or confirm the draft via `agent report-reviewer`.
+
+## Connections
+
+These arrows state the intended step relationships explicitly.
+
+```text
+P -> N1
+N1 -> N5
+N5 -> N5v
+N5v -> N6
+N6 -> N7
+```

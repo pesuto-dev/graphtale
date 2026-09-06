@@ -1,58 +1,83 @@
-<p>
-  <a href="https://pesuto.dev/">a pesuto tool</a>
-</p>
+<p><a href="https://pesuto.dev/">a pesuto tool</a></p>
 
 # Graphtale
 
-See the intended runtime of an Agent Skill from the SKILL.md you already
-wrote, without changing the files.
+Graphtale is a read-only Cursor / VS Code extension for visual review of an Agent Skill from the files you already wrote. It shows supported
+instruction structure and the files a skill refers to, without editing or
+executing the skill.
 
-Cursor / VS Code extension. Apache-2.0; the Pesuto and Graphtale names
-are not (see [NOTICE](NOTICE) and [TRADEMARK.md](TRADEMARK.md)).
+Graphtale is open source under Apache-2.0. The Pesuto and Graphtale names and
+logos are protected marks; see [NOTICE](NOTICE) and [TRADEMARK.md](TRADEMARK.md).
 
-## Screenshots
+## Install and try it in 60 seconds
 
-Flow view (golden fixture):
+Build a local `.vsix` with `npm ci && npm run package`, or download one when
+available from [GitHub Releases](https://github.com/pesuto-dev/graphtale/releases). Then run
+**Extensions: Install from VSIX...** in Cursor or VS Code. Open a folder that
+contains a skill and run **Graphtale: Open Agent Skill Flow** from the Command
+Palette. Choose the skill if prompted; Flow opens first and Catalog shows its
+files.
 
-![Flow view](assets/marketplace/procedure-analyse-ticket.png)
+Paste this small skill into `.cursor/skills/review-change/SKILL.md` (or the equivalent
+skill directory):
 
-Catalog inventory:
+```markdown
+---
+name: review-change
+description: Review a change using its source evidence.
+---
 
-![Catalog inventory](assets/marketplace/catalog-analyse-ticket.png)
+## Instructions
+1. Read request
+2. Gather files
+3. Compare edits
+4. Check evidence
+5. Write findings
+6. Return review
+```
 
-Honest diagnosis when no flow is found:
+Open the file, choose **Open Agent Skill Flow**, and inspect the six steps.
+Edit a step, then use **Refresh**. Double-click a node or choose **Open instruction**
+to return to the source. The viewer never writes the skill.
 
-![No flow diagnosis](assets/marketplace/procedure-none-diagnosis.png)
+![Complete six-step review in Compact view](assets/marketplace/procedure-analyse-ticket.png)
 
-## What it does
+The six numbered instructions become six source-linked steps. Use **Compact**
+for an overview, select a step for its text, and **Open instruction** for the
+exact source line. Referenced resources have a separate open action.
 
-Opens a skill folder and shows two views:
+## What Graphtale understands
 
-- **Flow**: the ordered steps the skill says to run, with how sure that
-  reconstruction is. If there is no flow in the text, the view stays empty
-  and says so. This is the first tab, and the view that opens with the skill.
-- **Catalog**: files and references that belong to the skill (not runtime order).
+Flow recognizes numbered Markdown headings and numbered lists in common
+instruction sections, plus explicit P/N rows and arrows described in
+[parser coverage](docs/parser-coverage.md). It preserves source paths and
+line ranges for detected steps. Catalog is a grouped inventory of skill files
+and references; it does not claim runtime order.
 
-Double-click a node or use **Open file** to edit markdown in the editor. When
-those files change, **Refresh** lights up. The graph never writes the flow or
-modifies skill files.
+The parser is deliberately conservative. Prose-only instructions, examples,
+choices, loops, unsupported relationships, and ambiguous ordering can produce
+an empty or partial diagnosis. “High confidence” describes supported structure
+and relationships; it is not a probability that every instruction was found.
+Graphtale does not execute skills, observe sessions, install skills, edit flow
+edges, or call a backend/API. It reads local files through the editor and
+workspace APIs, and clipboard actions happen only when you request them.
 
-This is not a skill installer, flow editor, or session debugger.
+Supported skill locations are listed in [skill locations](docs/skill-locations.md).
 
-## Flow detection
+## Privacy and support
 
-High confidence when the skill has a P/N ASCII graph, numbered workflow
-headings, **First Steps** / **Instructions** (numbered), or `operations.md`.
-Prose-only marketplace skills get an honest “none” diagnosis. The banner
-says when a chat prompt is needed (only if you want Flow to draw the
-skill) and copies a prompt that asks for numbered First Steps without
-inventing new work.
+The extension reads skills in the workspace and home skill directories, plus
+local resources referenced by those skills. It has no backend, API key requirement,
+telemetry service, or skill execution. Read limits and truncation are documented
+in [file limits](docs/file-limits.md). Symlinked skill discovery and arbitrary
+unlinked asset folders are not supported yet.
 
-Skill roots: [docs/skill-locations.md](docs/skill-locations.md). Codex
-canonical user path is `~/.codex/skills`. Optional `agents/openai.yaml` is
-listed in Catalog when present.
+This is a hobby project with best-effort support and no response-time promise.
+Report a small, anonymized reproduction using the issue templates.
 
-## Develop
+## Development
+
+Start with the [contributor guide](CONTRIBUTING.md), then:
 
 ```bash
 npm install
@@ -60,35 +85,12 @@ npm test
 npm run check
 npm run validate
 npm run compile
-```
-
-**Run Extension** (`F5`). Then:
-
-- Command Palette → **Graphtale: Open Agent Skill Flow** (picks a skill
-  if more than one is found)
-- Activity bar **Graphtale** → click a skill (or the Open icon)
-- Editor title / explorer context on a `SKILL.md` file
-
-Browser preview (no Extension Host):
-
-```bash
-npm run preview
-```
-
-Package a marketplace `.vsix` (publisher `pesuto`, package `graphtale`):
-
-```bash
 npm run package
 ```
 
-Regenerate marketplace screenshots:
+For a browser-only preview, run `npm run preview`; it uses fixture data and
+does not exercise extension-host integration. The package command runs the
+same `vscode:prepublish` build used when VS Code packages the extension.
 
-```bash
-npm run screenshots
-```
-
-See [CHANGELOG.md](CHANGELOG.md).
-
-## Roadmap
-
-See [PLAN.md](PLAN.md). Flow editor stays parked.
+See [CHANGELOG.md](CHANGELOG.md) and [product direction](https://github.com/pesuto-dev/graphtale/blob/main/PLAN.md) for project history and
+direction. Flow editing remains out of scope for this release.

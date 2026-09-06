@@ -12,3 +12,13 @@ assets/demo-skills/*.png
 fixtures/user-skills/claude/
 fixtures/user-skills/agents/
 fixtures/user-skills/MANIFEST.json
+
+# Local verification output.
+artifacts/
+
+# Private session notes and local credentials.
+docs/NEXT-SESSION.md
+.env
+.env.*
+!.env.example
+*.log

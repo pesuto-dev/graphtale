@@ -881,3 +881,31 @@ button.chip:disabled {
   border-bottom-color: var(--border) !important;
   fill: var(--fg) !important;
 }
+
+.app.inspector-closed,
+html.preview-harness .app.inspector-closed {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.inspector.collapsed { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
+button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+.main-procedure { display: flex; flex-direction: column; min-height: 0; }
+.graph-pane { flex: 1; min-height: 0; }
+.error-banner, .read-warnings { flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--border); overflow-wrap: anywhere; }
+.error-banner { display: flex; align-items: center; gap: 12px; }
+.error-banner > button { flex-shrink: 0; white-space: nowrap; }
+.read-warnings { max-height: 120px; overflow: auto; }
+.flow-empty { padding: 24px; text-align: center; }
+.diagnosis-actions { display: grid; gap: 8px; min-width: 180px; }
+.diagnosis-actions summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.inspector-actions, .toolbar-stats { flex-wrap: wrap; }
+.inspector .path { overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .toolbar { flex-wrap: wrap; padding: 8px; }
+  .toolbar-stats .stat { display: none; }
+  .diagnosis-banner { flex-direction: column; max-height: 240px; overflow: auto; }
+  .inspector-head { flex-direction: column; }
+  .app { grid-template-rows: auto minmax(150px, 1fr) minmax(100px, 30%); }
+  .inspector.collapsed .hint { display: none; }
+}

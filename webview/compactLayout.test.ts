@@ -6,7 +6,6 @@ import {
   compactLevels,
   compactNodeBoxesOverlap,
   COMPACT_COLS,
-  COMPACT_NODE_H,
   filterForCompact,
   packCompactRows,
   toCompactFlow,
@@ -223,58 +222,13 @@ describe("compactLayout", () => {
     expect(flow.edges.some((e) => e.label === "parallel")).toBe(false);
   });
 
-  it("packs fixtures/analyse-ticket-pn without inventing edges", () => {
+  it("keeps unsupported P/N rows visible without inventing support relationships", () => {
     const result = parseFixture("../fixtures/analyse-ticket-pn");
-    const flow = toCompactFlow(result.graph.nodes, result.graph.edges);
-    expect(flow.nodes.length).toBeGreaterThan(8);
-    expect(flow.nodes.some((n) => n.id === "skill-md")).toBe(true);
-    expect(flow.nodes.some((n) => n.id.includes("analysis.schema.json"))).toBe(true);
-    expect(flow.nodes.some((n) => n.id.includes("output-template.md"))).toBe(true);
-    expect(flow.nodes.some((n) => n.id.includes("classify.md"))).toBe(false);
-    expect(compactNodeBoxesOverlap(flow.nodes)).toBe(false);
-
-    const n5 = flow.nodes.find((n) => n.id === "step:N5")!;
-    const n5v = flow.nodes.find((n) => n.id === "step:N5v")!;
-    const schema = flow.nodes.find((n) => n.id.includes("analysis.schema.json"))!;
-    const template = flow.nodes.find((n) => n.id.includes("output-template.md"))!;
-    expect(n5v.position.x).toBe(schema.position.x);
-    expect(schema.position.x).toBe(template.position.x);
-    expect(n5.position.x).toBeLessThan(n5v.position.x);
-
-    const ids = new Set(flow.edges.map((e) => `${e.source}->${e.target}`));
-    expect(ids.has("step:N5->step:N5v")).toBe(true);
-    expect(ids.has(`step:N5->${schema.id}`)).toBe(true);
-    expect(ids.has(`step:N5->${template.id}`)).toBe(true);
-    expect(ids.has("step:N5v->step:N6")).toBe(true);
-    expect(ids.has(`${schema.id}->step:N6`)).toBe(true);
-    expect(ids.has("step:N5->step:N6")).toBe(false);
-    expect(
-      flow.edges.filter((e) => e.source === "step:N5v" && e.target === "step:N6"),
-    ).toHaveLength(1);
-    expect(flow.edges.some((e) => e.source === template.id && e.target === "step:N6")).toBe(
-      false,
-    );
-    expect(flow.edges.some((e) => e.label === "conditional")).toBe(true);
-    expect(flow.edges.some((e) => e.label === "shape")).toBe(true);
-    expect(flow.edges.some((e) => e.label === "slots")).toBe(true);
-
-    const { nodes, edges } = filterForCompact(result.graph.nodes, result.graph.edges);
-    expect(rankIds(compactLevels(nodes, edges))).toEqual(rankIds(dagreLrRanks(nodes, edges)));
-    const rows = packCompactRows(columnsFromLevels(compactLevels(nodes, edges), edges), COMPACT_COLS, edges);
-    expect(rows[1]?.map((c) => c.nodes.map((n) => n.id))).toEqual([
-      ["step:P"],
-      ["step:N1"],
-      expect.arrayContaining(["step:N2a", "step:N2b", "step:N2c"]),
-      ["step:N3"],
-    ]);
-    expect(rows[1]?.[2]?.nodes).toHaveLength(3);
-    expect(rows[2]?.map((c) => c.nodes[0]?.id)[0]).toBe("gate:question");
-    const n5Row = rows.find((row) => row.some((col) => col.nodes.some((n) => n.id === "step:N5")));
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id === "step:N5v"))).toBe(true);
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id.includes("analysis.schema.json")))).toBe(
-      true,
-    );
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id === "step:N6"))).toBe(true);
+    expect(result.diagnosis.confidence).toBe("partial");
+    const flow = assertHealthyCompact(result.graph.nodes, result.graph.edges);
+    expect(flow.nodes.filter(n => n.id.startsWith("step:"))).toHaveLength(12);
+    expect(flow.edges.some(e => e.source.startsWith("step:"))).toBe(false);
+    expect(flow.nodes.some(n => n.id.startsWith("support:"))).toBe(false);
   });
 
   it("does not wrap a short First Steps skill across extra runtime rows", () => {
@@ -346,51 +300,24 @@ describe("compactLayout", () => {
     expect(result.diagnosis.confidence).toBe("high");
     const flow = toCompactFlow(result.graph.nodes, result.graph.edges);
     expect(compactNodeBoxesOverlap(flow.nodes)).toBe(false);
-    expect(flow.nodes.some((n) => n.id === "gate:question")).toBe(true);
+    expect(flow.nodes.some((n) => n.id === "step:N3")).toBe(true);
     expect(flow.nodes.some((n) => n.id.startsWith("support:"))).toBe(false);
     const ids = new Set(flow.edges.map((e) => `${e.source}->${e.target}`));
-    expect(ids.has("gate:question->step:N4")).toBe(true);
-    expect(ids.has("gate:question->step:N5")).toBe(true);
-    expect(ids.has("step:N3->step:N4")).toBe(false);
+    expect(ids.has("step:N3->step:N4")).toBe(true);
+    expect(ids.has("step:N3->step:N5")).toBe(true);
+    expect(ids.has("step:N3->step:N4")).toBe(true);
     expect(ids.has("step:N4->step:N5")).toBe(true);
     expect(flow.edges.some((e) => e.label === "Question")).toBe(true);
     expect(flow.edges.some((e) => e.label === "Bug | Change")).toBe(true);
   });
 
-  it("routes support-handoff schema to N6 and keeps a single agent arrow", () => {
+  it("keeps the explicit review chain without turning schema references into steps", () => {
     const result = parseFixture("../fixtures/demo-skills/support-handoff");
     expect(result.diagnosis.confidence).toBe("high");
-    const flow = toCompactFlow(result.graph.nodes, result.graph.edges);
-    expect(compactNodeBoxesOverlap(flow.nodes)).toBe(false);
-
-    const schema = flow.nodes.find((n) => n.id.includes("report.schema.json"));
-    const template = flow.nodes.find((n) => n.id.includes("output-template.md"));
-    expect(schema).toBeDefined();
-    expect(template).toBeDefined();
-    const ids = new Set(flow.edges.map((e) => `${e.source}->${e.target}`));
-    expect(ids.has("step:N5v->step:N6")).toBe(true);
-    expect(ids.has(`${schema!.id}->step:N6`)).toBe(true);
-    expect(ids.has("step:N5->step:N6")).toBe(false);
-    expect(
-      flow.edges.filter((e) => e.source === "step:N5v" && e.target === "step:N6"),
-    ).toHaveLength(1);
-    expect(flow.edges.some((e) => e.source === template!.id && e.target === "step:N6")).toBe(
-      false,
-    );
-    expect(flow.edges.some((e) => e.label === "handoff")).toBe(true);
-
-    const n5 = flow.nodes.find((n) => n.id === "step:N5")!;
-    const n5v = flow.nodes.find((n) => n.id === "step:N5v")!;
-    const n6 = flow.nodes.find((n) => n.id === "step:N6")!;
-    expect(schema!.position.x).toBe(n5v.position.x);
-    expect(n6.position.x).toBeGreaterThan(schema!.position.x);
-    expect(Math.abs(n5.position.y - n6.position.y)).toBeLessThan(COMPACT_NODE_H * 3);
-    const schemaToN6 = flow.edges.find((e) => e.source === schema!.id && e.target === "step:N6");
-    const agentToN6 = flow.edges.find((e) => e.source === "step:N5v" && e.target === "step:N6");
-    expect(schemaToN6?.type).not.toBe("compactWrap");
-    expect(agentToN6?.type).not.toBe("compactWrap");
-    expect(schemaToN6?.sourceHandle).toBe("out-right");
-    expect(agentToN6?.sourceHandle).toBe("out-right");
+    const flow = assertHealthyCompact(result.graph.nodes, result.graph.edges);
+    expect(flow.edges.filter(e => e.source === "step:N5v" && e.target === "step:N6")).toHaveLength(1);
+    expect(flow.nodes.some(n => n.id.startsWith("support:"))).toBe(false);
+    expect(flow.edges.some(e => e.label === "handoff")).toBe(false);
   });
 });
 
@@ -404,18 +331,12 @@ describe.each(demoSkillNames)("demo-skills/%s", (name) => {
 });
 
 describe("generic compact DAGs", () => {
-  it("keeps a two-high stack with its join on one row", () => {
+  it("keeps the explicitly sequential review fixture sequential", () => {
     const result = parseFixture("../fixtures/demo-skills/pair-support");
-    const { nodes, edges } = filterForCompact(result.graph.nodes, result.graph.edges);
-    const rows = packCompactRows(columnsFromLevels(compactLevels(nodes, edges), edges), COMPACT_COLS, edges);
-    const n5Row = rows.find((row) => row.some((col) => col.nodes.some((n) => n.id === "step:N5")));
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id === "step:N5v"))).toBe(true);
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id.includes("report.schema.json")))).toBe(
-      true,
-    );
-    expect(n5Row?.some((col) => col.nodes.some((n) => n.id === "step:N6"))).toBe(true);
-    const stack = n5Row?.find((col) => col.nodes.some((n) => n.id === "step:N5v"));
-    expect(stack?.nodes).toHaveLength(2);
+    const flow = assertHealthyCompact(result.graph.nodes, result.graph.edges);
+    expect(flow.edges.some(e => e.source === "step:N5" && e.target === "step:N5v")).toBe(true);
+    expect(flow.edges.some(e => e.source === "step:N5v" && e.target === "step:N6")).toBe(true);
+    expect(flow.nodes.some(n => n.id.startsWith("support:"))).toBe(false);
   });
 
   it("wraps an odd-length First Steps chain onto a short last row", () => {
@@ -452,7 +373,7 @@ describe("generic compact DAGs", () => {
     const ids = new Set(result.graph.nodes.map((n) => n.id));
     expect(ids.has("step:N2a")).toBe(true);
     expect(ids.has("step:N2b")).toBe(true);
-    expect(ids.has("gate:question")).toBe(true);
+    expect(ids.has("step:N3")).toBe(true);
     const flow = assertHealthyCompact(result.graph.nodes, result.graph.edges);
     expect(flow.edges.some((e) => e.label === "Question")).toBe(true);
     expect(flow.edges.some((e) => e.label === "Bug | Change")).toBe(true);

@@ -5,24 +5,29 @@ import { vscode } from "./vscode";
 import { ShapeMark } from "./ShapeMark";
 
 export function Inspector({
+  open,
+  onToggle,
   node,
   content,
   edges,
   nodes,
   onSelectNode,
 }: {
+  open: boolean;
+  onToggle: () => void;
   node: SkillNode | undefined;
   content: FileContentPayload | undefined;
   edges: SkillEdge[];
   nodes: SkillNode[];
   onSelectNode: (id: string) => void;
 }) {
+  if (!open) return <section className="inspector collapsed"><button onClick={onToggle} aria-expanded={false}>Show inspector</button><span className="hint">Select a step to inspect its source.</span></section>;
   if (!node) {
     return (
       <section className="inspector">
         <header className="inspector-head">
           <div>
-            <h2>Inspector</h2>
+            <h2>Inspector</h2><button onClick={onToggle} aria-expanded={true}>Hide inspector</button>
             <p className="hint">Select a node to read the file it belongs to.</p>
           </div>
         </header>
@@ -38,45 +43,33 @@ export function Inspector({
     .filter((item): item is { edge: SkillEdge; target: SkillNode } => Boolean(item.target));
 
   const badge =
-    node.kind === "gate" ? "validation" : node.isBlock ? "block" : "file";
+    node.kind === "gate" ? "branch" : node.isBlock ? "block" : "file";
 
   return (
     <section className="inspector">
       <header className="inspector-head">
         <div>
           <h2>{node.label}</h2>
-          <p className="path">{node.path}</p>
+          <p className="path">{node.path}{node.source ? ` · lines ${node.source.startLine}–${node.source.endLine}` : ""}</p>
         </div>
         <div className="inspector-actions">
+          <button onClick={onToggle} aria-expanded={true}>Hide inspector</button>
           <span className="status-pill on">{badge}</span>
+          {node.resourcePath ? <button onClick={() => vscode.postMessage({ type: "openFile", nodeId: node.id, target: "resource" })}>Open referenced resource</button> : null}
           <button
             type="button"
-            onClick={() => vscode.postMessage({ type: "openFile", path: node.path })}
+            onClick={() => vscode.postMessage({ type: "openFile", nodeId: node.id })}
           >
-            Open file
+            {node.source ? "Open instruction" : "Open file"}
           </button>
         </div>
       </header>
 
-      {node.kind === "gate" ? (
-        <div className="callout muted">
-          <strong>Validation step.</strong>
-          Gates do not own a full skill file. They are checks the workflow must
-          pass before the next agent or skill runs.
-        </div>
-      ) : node.isBlock ? (
-        <div className="callout">
-          <strong>Lock rule.</strong>
-          This is a block. Only the agent segment is shown in full. Dim text is
-          from SKILL.md. Open file edits the agent markdown in Cursor or VS Code.
-        </div>
-      ) : (
-        <div className="callout muted">
-          <strong>File open.</strong>
-          Edit this markdown in Cursor or VS Code. Open file, or double-click
-          the node. Refresh the graph after AI or editor changes.
-        </div>
-      )}
+      <div className="callout muted">
+        {node.source ? "This is instruction text from the source, not an execution trace." : "This file belongs to the skill’s discovered inventory."}
+        {node.kind === "gate" ? " Its outgoing branches are stated in the source." : ""}
+      </div>
+      {content?.nodeId === node.id && content.notice ? <p role="status" className="callout">{content.notice}</p> : null}
 
       <div className="inspector-meta">
         <ShapeMark kind={node.kind} />
@@ -110,7 +103,7 @@ export function Inspector({
         <div className="block-view">
           <pre
             className="dim"
-            onDoubleClick={() => vscode.postMessage({ type: "openFile", path: wrapper.path })}
+            onDoubleClick={() => vscode.postMessage({ type: "openFile", nodeId: node.id, target: "wrapper" })}
           >
             {wrapper.prefix}
           </pre>
@@ -119,7 +112,7 @@ export function Inspector({
           </div>
           <pre
             className="dim"
-            onDoubleClick={() => vscode.postMessage({ type: "openFile", path: wrapper.path })}
+            onDoubleClick={() => vscode.postMessage({ type: "openFile", nodeId: node.id, target: "wrapper" })}
           >
             {wrapper.suffix}
           </pre>
@@ -141,7 +134,7 @@ export function Inspector({
                 className="chip chip-link"
                 onClick={() => onSelectNode(target.id)}
               >
-                {edge.label ? `${edge.label} → ${target.label}` : target.label}
+                {edge.label ? `${edge.label} → ${target.label}` : target.label}{edge.relationship ? ` (${edge.relationship})` : ""}
               </button>
             ))}
           </div>

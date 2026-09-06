@@ -73,7 +73,78 @@ N5v review       agent reviewer
 });
 
 describe("parseProcedure", () => {
-  it("builds a high-confidence DAG from a P/N ASCII workflow graph", () => {
+  describe("release parser regressions", () => {
+    const regressionRoot = path.resolve(__dirname, "../fixtures/parser-regressions");
+
+    it("does not invent a Question/Bug/Change branch from P/N identifiers", () => {
+      const result = parseProcedure({ skillRoot: path.join(regressionRoot, "pn-cooking"), catalog: [] });
+      expect(result.graph.nodes.filter((node) => node.id.startsWith("step:")).map((node) => node.label)).toEqual([
+        "N3. Bake",
+        "N4. Cool",
+        "N5. Serve",
+      ]);
+      expect(result.graph.nodes.some((node) => node.kind === "gate")).toBe(false);
+      expect(result.diagnosis.confidence).toBe("partial");
+    });
+
+    it("does not treat a numbered Examples list as a flow", () => {
+      const result = parseProcedure({ skillRoot: path.join(regressionRoot, "examples-list"), catalog: [] });
+      expect(result.diagnosis.confidence).toBe("none");
+      expect(result.graph.nodes).toHaveLength(0);
+    });
+
+    it("detects numbered level-two headings directly in SKILL.md", () => {
+      const result = parseProcedure({ skillRoot: path.join(regressionRoot, "numbered-headings"), catalog: [] });
+      expect(result.diagnosis.confidence).toBe("high");
+      expect(result.graph.nodes.filter((node) => node.id.startsWith("step:")).map((node) => node.label)).toEqual([
+        "1. Gather",
+        "2. Review",
+        "3. Return",
+      ]);
+    });
+
+    it("attributes SKILL.md fallback steps to SKILL.md, not an unusable workflow", () => {
+      const root = path.join(regressionRoot, "fallback-source");
+      const result = parseProcedure({ skillRoot: root, catalog: [] });
+      expect(result.graph.nodes.filter((node) => node.id.startsWith("step:")).every((node) => node.path === path.join(root, "SKILL.md"))).toBe(true);
+    });
+
+    it("keeps list boundaries, nested alternatives, fenced examples, and repeated numbering distinct", () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-boundaries-"));
+      writeSkill(root, {
+        "SKILL.md": `---
+name: boundaries
+---
+
+## Instructions
+
+1. Select input
+   1. Red is an alternative
+   1. Blue is another alternative
+2. Process input
+
+\`\`\`md
+1. This example is not a step
+2. Neither is this
+\`\`\`
+
+1. Return result
+
+## Examples
+
+1. Also not a step
+`,
+      });
+      const result = parseProcedure({ skillRoot: root, catalog: [] });
+      const steps = result.graph.nodes.filter((node) => node.id.startsWith("step:"));
+      expect(steps.map((node) => node.id)).toEqual(["step:1", "step:2", "step:3"]);
+      expect(steps.map((node) => node.label)).toEqual(["1. Select input", "2. Process input", "1. Return result"]);
+      expect(steps.every((node) => node.source?.path === path.join(root, "SKILL.md"))).toBe(true);
+      expect(result.graph.edges.filter((edge) => edge.from.startsWith("step:")).every((edge) => edge.relationship === "explicit")).toBe(true);
+    });
+  });
+
+  it("preserves P/N rows as source evidence without inventing a DAG", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-proc-"));
     writeSkill(root, {
       "SKILL.md": `---
@@ -112,35 +183,22 @@ N7  write            scripts/write_report.py
     });
 
     const result = parseProcedure({ skillRoot: root, catalog: [] });
-    expect(result.diagnosis.confidence).toBe("high");
-    const ids = result.graph.nodes.map((n) => n.id);
-    expect(ids).toContain("skill-md");
-    expect(ids).toContain("procedure-source");
-    expect(ids).toContain("step:P");
-    expect(ids).toContain("step:N1");
-    expect(ids).toContain("step:N2a");
-    expect(ids).toContain("step:N4");
-    expect(ids).toContain("step:N7");
+    expect(result.diagnosis.confidence).toBe("partial");
+    const runtime = result.graph.nodes.filter((node) => node.id.startsWith("step:"));
+    expect(runtime.map((node) => node.label)).toEqual([
+      "P. preflight", "N1. resolve", "N2a. attachments", "N2b. evidence", "N2c. prior",
+      "N3. classify", "N4. inspect", "N4v. verify", "N5. synthesis", "N5v. review", "N6. validate", "N7. write",
+    ]);
+    expect(runtime.every((node) => node.source?.path.endsWith("references/workflow.md"))).toBe(true);
+    expect(runtime.every((node) => node.source && node.source.startLine === node.source.endLine)).toBe(true);
+    expect(result.graph.nodes.some((node) => node.kind === "gate")).toBe(false);
+    expect(result.graph.edges.filter((edge) => edge.from.startsWith("step:") || edge.to.startsWith("step:"))).toHaveLength(0);
     expect(result.graph.edges).toContainEqual(
       expect.objectContaining({ from: "skill-md", to: "procedure-source" }),
     );
     expect(result.graph.edges).toContainEqual(
-      expect.objectContaining({ from: "step:P", to: "step:N1" }),
+      expect.objectContaining({ from: "skill-md", to: "procedure-source", relationship: "inferred" }),
     );
-    expect(result.graph.edges).toContainEqual(
-      expect.objectContaining({ from: "step:N1", to: "step:N2a" }),
-    );
-    expect(result.graph.edges.some((e) => e.from === "gate:question" && e.to === "step:N4")).toBe(
-      true,
-    );
-    expect(result.graph.edges.some((e) => e.from === "step:N6" && e.to === "step:N7")).toBe(true);
-
-    const agents = result.graph.nodes.filter((n) => n.kind === "agent");
-    expect(agents.map((n) => n.id).sort()).toEqual(
-      ["step:N2b", "step:N3", "step:N4", "step:N5", "step:N5v"].sort(),
-    );
-    expect(result.graph.nodes.find((n) => n.id === "step:N3")?.label).toBe("N3 · classify");
-    expect(result.graph.edges.some((e) => e.from === "step:N5" && e.to === "step:N3")).toBe(false);
   });
 
   it("resolves agent resources under ~/.claude/agents when present", () => {
@@ -171,9 +229,10 @@ N3  classify         this loop                             -> Classification
     });
 
     const result = parseProcedure({ skillRoot: root, catalog: [], homedir: home });
-    const evidence = result.graph.nodes.find((n) => n.id === "step:N2b");
+    const evidence = result.graph.nodes.find((n) => n.label === "N2b. evidence");
     expect(evidence?.kind).toBe("agent");
-    expect(evidence?.path).toBe(path.join(home, ".claude", "agents", "worker-evidence.md"));
+    expect(evidence?.path).toBe(path.join(root, "references", "workflow.md"));
+    expect(evidence?.resourcePath).toBe(path.join(home, ".claude", "agents", "worker-evidence.md"));
   });
 
   it("keeps the legacy numbered workflow as a high-confidence procedure", () => {
@@ -187,7 +246,7 @@ N3  classify         this loop                             -> Classification
     expect(result.graph.nodes.length).toBeGreaterThan(3);
   });
 
-  it("does not double-wire N5v on a sequential P/N graph without N2", () => {
+  it("leaves unsupported P/N relationships unresolved", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-seq-n5v-"));
     writeSkill(root, {
       "SKILL.md": `---
@@ -214,15 +273,11 @@ N7  write            scripts/write_report.py
       "scripts/write_report.py": "",
     });
     const result = parseProcedure({ skillRoot: root, catalog: [] });
-    const n5ToN5v = result.graph.edges.filter((e) => e.from === "step:N5" && e.to === "step:N5v");
-    expect(n5ToN5v).toEqual([
-      expect.objectContaining({ from: "step:N5", to: "step:N5v", label: "conditional" }),
-    ]);
-    expect(result.graph.edges.some((e) => e.from === "step:N1" && e.to === "step:N5")).toBe(true);
-    expect(result.graph.edges.some((e) => e.from === "step:N5v" && e.to === "step:N6")).toBe(true);
+    expect(result.diagnosis.confidence).toBe("partial");
+    expect(result.graph.edges.filter((edge) => edge.from.startsWith("step:") || edge.to.startsWith("step:"))).toHaveLength(0);
   });
 
-  it("routes a Question gate without a direct N3→N4 skip when N2 is absent", () => {
+  it("does not infer a Question gate from step identifiers or names", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-gate-seq-"));
     writeSkill(root, {
       "SKILL.md": `---
@@ -250,14 +305,8 @@ N7  close            scripts/close.py
       "scripts/close.py": "",
     });
     const result = parseProcedure({ skillRoot: root, catalog: [] });
-    expect(result.graph.edges.some((e) => e.from === "step:N3" && e.to === "gate:question")).toBe(
-      true,
-    );
-    expect(result.graph.edges.some((e) => e.from === "step:N3" && e.to === "step:N4")).toBe(false);
-    expect(result.graph.edges.some((e) => e.from === "gate:question" && e.to === "step:N4")).toBe(
-      true,
-    );
-    expect(result.graph.edges.some((e) => e.from === "step:N4" && e.to === "step:N5")).toBe(true);
+    expect(result.graph.nodes.some((node) => node.kind === "gate")).toBe(false);
+    expect(result.diagnosis.confidence).toBe("partial");
   });
 
   it("returns partial diagnosis when only a workflow link exists", () => {

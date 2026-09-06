@@ -10,6 +10,7 @@ import type {
   UseChip,
 } from "./shared/protocol";
 import { parseFrontmatter } from "./discover";
+import { PREVIEW_READ_LIMIT_BYTES, INVENTORY_MAX_FILES, isRegularFile, readRequiredText, readTextFile, walkTextFiles } from "./fileAccess";
 
 const ENTRY_ID = "skill-md";
 const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
@@ -24,16 +25,13 @@ export function parseSkill(options: ParseOptions): SkillGraph {
   const homedir = options.homedir ?? os.homedir();
   const skillRoot = path.resolve(options.skillRoot);
   const skillFile = path.join(skillRoot, "SKILL.md");
-  if (!fs.existsSync(skillFile)) {
-    throw new Error(`No SKILL.md in ${skillRoot}`);
-  }
-
-  const skillText = fs.readFileSync(skillFile, "utf8");
+  const skillText = readRequiredText(skillFile);
   const meta = parseFrontmatter(skillText);
   const folderName = path.basename(skillRoot);
   const skillName = meta.name || folderName;
   const nodes = new Map<string, SkillNode>();
   const edges: SkillEdge[] = [];
+  const warnings: string[] = [];
 
   nodes.set(ENTRY_ID, {
     id: ENTRY_ID,
@@ -45,13 +43,14 @@ export function parseSkill(options: ParseOptions): SkillGraph {
     isEntry: true,
   });
 
-  addMarkdownLinks(skillText, skillRoot, homedir, nodes, edges);
-  addFolderFiles(skillRoot, "prompts", "agent", true, nodes, edges);
-  addFolderFiles(skillRoot, "references", "reference", false, nodes, edges);
-  addFolderFiles(skillRoot, "scripts", "script", false, nodes, edges);
-  addFolderFiles(skillRoot, "agents", undefined, false, nodes, edges);
-  addDispatchedAgents(skillText, skillRoot, homedir, nodes, edges);
+  addMarkdownLinks(skillText, skillRoot, homedir, nodes, edges, warnings);
+  addFolderFiles(skillRoot, "prompts", "agent", true, nodes, edges, warnings);
+  addFolderFiles(skillRoot, "references", "reference", false, nodes, edges, warnings);
+  addFolderFiles(skillRoot, "scripts", "script", false, nodes, edges, warnings);
+  addFolderFiles(skillRoot, "agents", undefined, false, nodes, edges, warnings);
+  addDispatchedAgents(skillText, skillRoot, homedir, nodes, edges, warnings);
   addSkillMentions(skillText, skillName, options.catalog, nodes, edges);
+  if (nodes.size >= INVENTORY_MAX_FILES) warnings.push(`Catalog stopped after ${INVENTORY_MAX_FILES} files.`);
 
   for (const node of nodes.values()) {
     node.uses = usesFor(node.id, edges, nodes);
@@ -63,6 +62,7 @@ export function parseSkill(options: ParseOptions): SkillGraph {
     rootPath: skillRoot,
     nodes: [...nodes.values()],
     edges,
+    warnings: [...new Set(warnings)],
   };
 }
 
@@ -90,14 +90,18 @@ function addMarkdownLinks(
   homedir: string,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
+  warnings: string[],
 ): void {
+  let scanned = 0;
   for (const match of skillText.matchAll(LINK_RE)) {
+    if (++scanned > INVENTORY_MAX_FILES) { warnings.push(`Catalog stopped scanning links after ${INVENTORY_MAX_FILES} entries.`); break; }
+    if (nodes.size >= INVENTORY_MAX_FILES) break;
     const href = match[2].trim();
     const resolved = resolveHref(href, skillRoot, homedir);
     if (!resolved) {
       continue;
     }
-    addFileNode(resolved, href, skillRoot, false, nodes, edges);
+    addFileNode(resolved, href, skillRoot, false, nodes, edges, warnings);
   }
 }
 
@@ -108,13 +112,16 @@ function addFolderFiles(
   isBlock: boolean,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
+  warnings: string[],
 ): void {
   const dir = path.join(skillRoot, folder);
   if (!isDirectory(dir)) {
     return;
   }
-  for (const file of walkFiles(dir)) {
-    addFileNode(file, path.relative(skillRoot, file), skillRoot, isBlock, nodes, edges, kind);
+  const inventory = walkTextFiles(dir);
+  warnings.push(...inventory.warnings);
+  for (const file of inventory.files) {
+    addFileNode(file, path.relative(skillRoot, file), skillRoot, isBlock, nodes, edges, warnings, kind);
   }
 }
 
@@ -128,20 +135,20 @@ function addDispatchedAgents(
   homedir: string,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
+  warnings: string[],
 ): void {
   const corpora = [skillText];
   const workflow = catalogWorkflowPath(skillText, skillRoot, homedir);
   if (workflow) {
-    try {
-      corpora.push(fs.readFileSync(workflow, "utf8"));
-    } catch {
-      // ignore unreadable workflow
-    }
+    const read = readTextFile(workflow, PREVIEW_READ_LIMIT_BYTES);
+    if (read.warning) warnings.push(read.warning);
+    if (read.text) corpora.push(read.text);
   }
 
   const seen = new Set<string>();
   for (const text of corpora) {
     for (const match of text.matchAll(/\bagent\s+([A-Za-z0-9][\w-]*)/g)) {
+      if (nodes.size >= INVENTORY_MAX_FILES) break;
       const name = match[1];
       if (seen.has(name)) {
         continue;
@@ -161,8 +168,10 @@ function addDispatchedAgents(
 
       let summary = `Agent ${name} (referenced in the flow)`;
       let excerpt: string | undefined;
-      if (resolved && fs.existsSync(resolved)) {
-        const body = fs.readFileSync(resolved, "utf8");
+      if (resolved && isRegularFile(resolved)) {
+        const read = readTextFile(resolved, PREVIEW_READ_LIMIT_BYTES);
+        if (read.warning) warnings.push(read.warning);
+        const body = read.text;
         summary = firstParagraph(stripFrontmatter(body)) || summary;
         excerpt = body.slice(0, 2000);
       }
@@ -201,7 +210,7 @@ function catalogWorkflowPath(
       continue;
     }
     const resolved = resolveHref(href, skillRoot, homedir);
-    if (resolved && fs.existsSync(resolved)) {
+    if (resolved && isRegularFile(resolved)) {
       return resolved;
     }
   }
@@ -209,7 +218,7 @@ function catalogWorkflowPath(
     path.join(skillRoot, "workflow.md"),
     path.join(skillRoot, "references", "workflow.md"),
   ]) {
-    if (fs.existsSync(candidate)) {
+    if (isRegularFile(candidate)) {
       return candidate;
     }
   }
@@ -259,9 +268,12 @@ function addFileNode(
   isBlockHint: boolean,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
+  warnings: string[],
   kindOverride?: NodeKind,
 ): void {
-  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+  if (nodes.size >= INVENTORY_MAX_FILES) return;
+  if (!isRegularFile(filePath)) {
+    warnings.push(`Referenced file ${hrefLabel(href)} is unavailable.`);
     return;
   }
   if (isCatalogNoise(filePath, skillRoot)) {
@@ -274,7 +286,9 @@ function addFileNode(
   const kind = kindOverride ?? kindFor(filePath, skillRoot);
   const isBlock = isBlockHint || kind === "agent";
   if (!nodes.has(id)) {
-    const text = readText(filePath);
+    const read = readTextFile(filePath, PREVIEW_READ_LIMIT_BYTES);
+    if (read.warning) warnings.push(read.warning);
+    const text = read.text;
     nodes.set(id, {
       id,
       label: path.basename(filePath),
@@ -303,6 +317,7 @@ function addSkillMentions(
 ): void {
   const body = stripFrontmatter(skillText);
   for (const skill of catalog) {
+    if (nodes.size >= INVENTORY_MAX_FILES) break;
     if (skill.name === selfName) {
       continue;
     }
@@ -410,19 +425,6 @@ function usesFor(id: string, edges: SkillEdge[], nodes: Map<string, SkillNode>):
     });
 }
 
-function walkFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...walkFiles(full));
-    } else if (entry.isFile()) {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
 function stripFrontmatter(text: string): string {
   return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 }
@@ -440,14 +442,6 @@ function isDirectory(dir: string): boolean {
     return fs.statSync(dir).isDirectory();
   } catch {
     return false;
-  }
-}
-
-function readText(filePath: string): string {
-  try {
-    return fs.readFileSync(filePath, "utf8");
-  } catch {
-    return "";
   }
 }
 

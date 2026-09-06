@@ -1,19 +1,12 @@
-# Marketplace assets
+# Preview listing images
 
-Screenshots for the VS Code / Cursor marketplace listing (1280×720).
+Regenerate with `npm run screenshots` after building the UI.
 
-Regenerate after UI changes:
+- procedure-analyse-ticket.png: complete six-step review demo, Compact overview.
+- catalog-analyse-ticket.png: report sample with a linked template and script.
+- procedure-none-diagnosis.png: prose-only limitations with direct Catalog access.
 
-```bash
-npm run compile:webview
-npm run screenshots
-```
-
-| File | Preview |
-| --- | --- |
-| `procedure-analyse-ticket.png` | Flow view on the golden `analyse-ticket-pn` fixture |
-| `catalog-analyse-ticket.png` | Catalog inventory for the same skill |
-| `procedure-none-diagnosis.png` | Honest “none” diagnosis for prose-only skills |
-
-These PNGs are included in the packaged `.vsix` so Open VSX / marketplace README
-embeds resolve. Regenerate after UI changes; do not hand-edit the images.
+Filenames are retained for listing compatibility. Images use synthetic fixtures
+and neutral /workspace/graphtale paths. Browser screenshots are not evidence of
+extension-host integration. The inspector starts collapsed so the whole overview
+fits; selecting a step reveals source evidence.

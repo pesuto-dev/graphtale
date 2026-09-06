@@ -37,13 +37,13 @@ type Shot = {
 const marketplaceShots: Shot[] = [
   {
     file: "procedure-analyse-ticket.png",
-    skill: "fixtures/analyse-ticket-pn",
-    query: "view=flow",
+    skill: "fixtures/release-samples/numbered-review",
+    query: "view=flow&compact=1",
     waitFor: ".react-flow__node",
   },
   {
     file: "catalog-analyse-ticket.png",
-    skill: "fixtures/analyse-ticket-pn",
+    skill: "fixtures/release-samples/asset-report",
     query: "view=catalog",
     waitFor: ".inventory",
   },
@@ -126,7 +126,7 @@ async function writePreviewData(skillRelative: string): Promise<void> {
     direction: "TB",
   };
 
-  fs.writeFileSync(previewDataFile, JSON.stringify(message, null, 2) + "\n", "utf8");
+  fs.writeFileSync(previewDataFile, JSON.stringify(message, null, 2).split(root).join("/workspace/graphtale") + "\n", "utf8");
 }
 
 function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {

@@ -78,7 +78,7 @@ export function CatalogInventory({
   nodes: SkillNode[];
   selectedId: string | undefined;
   onSelect: (id: string) => void;
-  onOpen: (path: string) => void;
+  onOpen: (nodeId: string) => void;
 }) {
   const groups = groupInventory(nodes);
   const counts = {
@@ -94,8 +94,8 @@ export function CatalogInventory({
         <div>
           <h2>Inventory</h2>
           <p className="hint">
-            What this skill contains on disk. Open a file, or switch to Flow for runtime
-            order.
+            What this skill contains on disk. Open a file, or switch to Flow for supported instruction
+            structure.
           </p>
         </div>
         <div className="inventory-stats">
@@ -135,7 +135,7 @@ export function CatalogInventory({
                         type="button"
                         className={selected ? "inventory-row is-selected" : "inventory-row"}
                         onClick={() => onSelect(node.id)}
-                        onDoubleClick={() => onOpen(node.path)}
+                        onDoubleClick={() => onOpen(node.id)}
                       >
                         <span className="inventory-row-main">
                           <ShapeMark kind={node.kind} />

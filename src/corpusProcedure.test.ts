@@ -24,7 +24,7 @@ function projectCatalog() {
 }
 
 describe("analyse-ticket-pn golden flow", () => {
-  it("wraps SKILL.md → workflow → P…N7 with support and handoff", () => {
+  it("keeps source evidence without manufacturing runtime relationships", () => {
     const catalog = projectCatalog();
     const result = parseProcedure({
       skillRoot: pnRoot,
@@ -32,56 +32,26 @@ describe("analyse-ticket-pn golden flow", () => {
       homedir: path.join(fixturesRoot, "empty-home"),
     });
 
-    expect(result.diagnosis.confidence).toBe("high");
+    expect(result.diagnosis.confidence).toBe("partial");
     const ids = result.graph.nodes.map((n) => n.id);
     expect(ids).toContain("skill-md");
     expect(ids).toContain("procedure-source");
-    expect(ids).toContain("step:P");
-    expect(ids).toContain("step:N7");
-    expect(ids).toContain("gate:question");
+    expect(result.graph.nodes.filter((node) => node.id.startsWith("step:")).map((node) => node.label)).toEqual([
+      "P. ingest", "N1. split", "N2a. left", "N2b. worker", "N2c. right", "N3. classify",
+      "N4. inspect", "N4v. verify", "N5. compose", "N5v. review", "N6. check", "N7. render + N8 write",
+    ]);
 
     const entry = result.graph.nodes.find((n) => n.isEntry);
     expect(entry?.id).toBe("skill-md");
 
     expect(result.graph.edges).toContainEqual(
-      expect.objectContaining({ from: "skill-md", to: "procedure-source", label: "read on invoke" }),
+      expect.objectContaining({ from: "skill-md", to: "procedure-source", label: "source" }),
     );
     expect(result.graph.edges.some((e) => e.from === "procedure-source" && e.to === "step:P")).toBe(
-      true,
+      false,
     );
-
-    const supportLabels = result.graph.nodes.map((n) => n.label);
-    expect(supportLabels.some((l) => /schema|output-template|classify/i.test(l))).toBe(true);
-
-    expect(ids).toContain("skill:handoff-target");
-    expect(
-      result.graph.edges.some(
-        (e) => e.to === "skill:handoff-target" && e.label === "handoff" && e.confidence === "low",
-      ),
-    ).toBe(true);
-
-    const n5 = result.graph.nodes.find((n) => n.id === "step:N5");
-    expect(n5?.kind).toBe("agent");
-    expect(n5?.label).toBe("N5 · compose");
-    const n7 = result.graph.nodes.find((n) => n.id === "step:N7");
-    expect(n7?.label).toMatch(/N7\+N8/);
-
-    const agents = result.graph.nodes.filter((n) => n.kind === "agent");
-    expect(agents.map((n) => n.id).sort()).toEqual(
-      ["step:N2b", "step:N3", "step:N4", "step:N5", "step:N5v"].sort(),
-    );
-    expect(result.graph.nodes.find((n) => n.id === "step:N3")?.label).toBe("N3 · classify");
-    expect(result.graph.nodes.find((n) => n.id === "step:N2b")?.label).toBe("N2b · worker");
-
-    expect(
-      result.graph.edges.some((e) => e.from === "step:N5" && e.to === "step:N3"),
-    ).toBe(false);
-    expect(ids).toContain("support:references/classify.md");
-    expect(
-      result.graph.edges.some(
-        (e) => e.to === "support:references/classify.md" && e.label === "criteria",
-      ),
-    ).toBe(true);
+    expect(result.graph.edges.filter((edge) => edge.from.startsWith("step:") || edge.to.startsWith("step:"))).toHaveLength(0);
+    expect(ids).not.toContain("gate:question");
   });
 });
 
@@ -98,7 +68,7 @@ describe("user-skills claude corpus", () => {
     }
   });
 
-  it.skipIf(!available)("analyse-ticket has entry wrap and PN spine", () => {
+  it.skipIf(!available)("analyse-ticket retains source evidence for detected steps", () => {
     const catalog = [
       ...projectCatalog(),
       {
@@ -112,13 +82,12 @@ describe("user-skills claude corpus", () => {
       skillRoot: path.join(claudeCorpus, "analyse-ticket"),
       catalog,
     });
-    expect(result.diagnosis.confidence).toBe("high");
-    const ids = result.graph.nodes.map((n) => n.id);
-    expect(ids).toContain("skill-md");
-    expect(ids).toContain("procedure-source");
-    expect(ids).toContain("step:P");
-    expect(ids).toContain("step:N7");
-    expect(ids).toContain("gate:question");
+    const steps = result.graph.nodes.filter(node => node.id.startsWith("step:"));
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps.every(node => node.source?.path === node.path)).toBe(true);
+    expect(result.graph.edges.filter(edge => edge.from.startsWith("step:")).every(edge =>
+      edge.relationship === "explicit" && edge.source !== undefined,
+    )).toBe(true);
   });
 
   it.skipIf(!available)("ticket-handler and devops-tickets are useful procedures", () => {

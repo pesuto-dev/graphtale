@@ -16,6 +16,6 @@ To open a live Cursor Canvas beside chat, copy `.canvas.tsx` files into:
 
 ## Shipped behaviour
 
-The extension shows **Flow** (runtime order with hybrid confidence; first tab)
-and **Catalog** (file inventory). Flow enrichment is in-memory only. Flow
+The extension shows **Flow** (supported source instruction structure; first tab)
+and **Catalog** (file inventory). Flow detection is in-memory only. Flow
 editing stays parked.

@@ -1,6 +1,6 @@
 /**
  * Writes webview/preview-data.json from real parsers (read-only; never mutates skills).
- * Default fixture: fixtures/analyse-ticket-pn (synthetic P/N golden).
+ * Default fixture: fixtures/release-samples/numbered-review (synthetic P/N golden).
  *
  * Usage:
  *   npx tsx scripts/generate-preview-data.ts
@@ -17,7 +17,7 @@ import type { HostToWebview } from "../src/shared/protocol.ts";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const skillRoot = path.resolve(
   root,
-  process.env.PREVIEW_SKILL ?? "fixtures/analyse-ticket-pn",
+  process.env.PREVIEW_SKILL ?? "fixtures/release-samples/numbered-review",
 );
 const outFile = path.join(root, "webview/preview-data.json");
 const emptyHome = path.join(root, "fixtures/empty-home");

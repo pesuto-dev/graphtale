@@ -26,7 +26,7 @@ export function Legend({
       </span>
       <span className="legend-item">
         <span className="legend-line dashed" />
-        {showProcedureHints ? "support / conditional / handoff" : "inferred"}
+        {showProcedureHints ? "inferred / unresolved" : "inferred"}
       </span>
     </div>
   );

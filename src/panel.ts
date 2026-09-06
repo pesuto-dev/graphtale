@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { readTextFile, PREVIEW_READ_LIMIT_BYTES } from "./fileAccess";
+import { resolveOpenTarget } from "./viewerAccess";
 import { discoverSkills } from "./discover";
 import { parseProcedure } from "./parseProcedure";
 import { parseSkill, wrapperAroundLink } from "./parseSkill";
@@ -45,12 +47,16 @@ export class GraphtalePanel {
   }
 
   private catalog: CatalogSkill[] = [];
+  private discoveryWarnings: string[] = [];
   private graph: SkillGraph | undefined;
   private procedure: SkillGraph | undefined;
   private diagnosis: ProcedureDiagnosis = emptyDiagnosis();
   private direction: LayoutDirection;
   private watchedFiles: string[] = [];
   private watchers: vscode.Disposable[] = [];
+  private attemptedRoot: string | undefined;
+  private lastError: { message: string; retryable: boolean } | undefined;
+  private stale = false;
   private staleTimer: ReturnType<typeof setTimeout> | undefined;
 
   private constructor(
@@ -68,7 +74,7 @@ export class GraphtalePanel {
       if (!isWebviewToHost(raw)) {
         return;
       }
-      this.onMessage(raw);
+      try { this.onMessage(raw); } catch { this.reportError("The action could not be completed. Retry after checking the skill files.", true); }
     });
     const initial = skillRoot ?? this.defaultSkillRoot();
     if (initial) {
@@ -90,36 +96,50 @@ export class GraphtalePanel {
   }
 
   public refresh(): void {
-    if (this.graph?.rootPath) {
-      this.openSkill(this.graph.rootPath);
+    const root = this.attemptedRoot ?? this.graph?.rootPath;
+    if (root) {
+      this.openSkill(root);
     }
   }
 
   public openSkill(skillRoot: string): void {
-    this.refreshCatalog();
-    this.graph = parseSkill({ skillRoot, catalog: this.catalog });
-    const parsed = parseProcedure({ skillRoot, catalog: this.catalog });
-    this.procedure = parsed.graph;
-    this.diagnosis = parsed.diagnosis;
-    this.panel.title = `Graphtale - ${this.graph.skillName}`;
-    this.watchSkill(skillRoot);
-    this.post({
-      type: "graph",
-      graph: this.graph,
-      procedure: parsed.graph,
-      pipeline: parsed.graph,
-      diagnosis: this.diagnosis,
-      catalog: this.catalog,
-      direction: this.direction,
-    });
-    this.post({ type: "stale", stale: false });
+    this.attemptedRoot = skillRoot;
+    try {
+      this.refreshCatalog();
+      const graph = parseSkill({ skillRoot, catalog: this.catalog });
+      const parsed = parseProcedure({ skillRoot, catalog: this.catalog });
+      graph.warnings = [...(graph.warnings ?? []), ...this.discoveryWarnings];
+      this.graph = graph;
+      this.procedure = parsed.graph;
+      this.diagnosis = parsed.diagnosis;
+      this.lastError = undefined;
+      this.stale = false;
+      this.panel.title = `Graphtale - ${graph.skillName}`;
+      this.watchSkill(skillRoot);
+      this.sendGraph();
+      this.post({ type: "stale", stale: false });
+    } catch {
+      this.reportError(`Could not load ${path.join(skillRoot, "SKILL.md")}. Check that it is readable text within the 256 KiB input limit, then retry. The previous view is preserved.`, true);
+    }
+  }
+
+  private sendGraph(): void {
+    this.post({ type: "graph", graph: this.graph ?? emptyGraph(), procedure: this.procedure ?? emptyGraph(),
+      pipeline: this.procedure ?? emptyGraph(), diagnosis: this.diagnosis, catalog: this.catalog, direction: this.direction });
+  }
+
+  private reportError(message: string, retryable: boolean): void {
+    this.lastError = { message, retryable };
+    this.stale = true;
+    this.post({ type: "stale", stale: true });
+    this.post({ type: "error", message, retryable });
   }
 
   private watchSkill(skillRoot: string): void {
     this.disposeWatch();
     this.watchedFiles = extraWatchFiles([
       ...(this.graph?.nodes ?? []).map((node) => node.path),
-      ...(this.procedure?.nodes ?? []).map((node) => node.path),
+      ...(this.procedure?.nodes ?? []).flatMap((node) => [node.path, ...(node.resourcePath ? [node.resourcePath] : [])]),
     ]);
     const folder = vscode.Uri.file(skillRoot);
     const watcher = vscode.workspace.createFileSystemWatcher(
@@ -143,6 +163,7 @@ export class GraphtalePanel {
       clearTimeout(this.staleTimer);
     }
     this.staleTimer = setTimeout(() => {
+      this.stale = true;
       this.post({ type: "stale", stale: true });
     }, 120);
   }
@@ -161,31 +182,23 @@ export class GraphtalePanel {
   private onMessage(message: WebviewToHost): void {
     switch (message.type) {
       case "ready":
-        if (this.graph) {
-          this.post({
-            type: "graph",
-            graph: this.graph,
-            procedure: this.procedure ?? emptyGraph(),
-            pipeline: this.procedure ?? emptyGraph(),
-            diagnosis: this.diagnosis,
-            catalog: this.catalog,
-            direction: this.direction,
-          });
-        }
+        this.sendGraph();
+        this.post({ type: "stale", stale: this.stale });
+        if (this.lastError) this.post({ type: "error", ...this.lastError });
         return;
       case "selectNode":
         this.sendFile(message.nodeId);
         return;
       case "openFile":
-        void this.openInEditor(message.path);
+        void this.openInEditor(message);
         return;
       case "setDirection":
         this.direction = message.direction;
-        void this.context.workspaceState.update(DIRECTION_KEY, this.direction);
+        void Promise.resolve(this.context.workspaceState.update(DIRECTION_KEY, this.direction)).catch(() => this.reportError("Could not save the layout preference.", false));
         this.post({ type: "direction", direction: this.direction });
         return;
       case "openSkill":
-        this.openSkill(message.rootPath);
+        if (this.catalog.some(skill => path.resolve(skill.rootPath) === path.resolve(message.rootPath))) this.openSkill(message.rootPath);
         return;
       case "refresh":
         this.refresh();
@@ -207,15 +220,17 @@ export class GraphtalePanel {
     if (!node) {
       return;
     }
-    const text = node.excerpt ?? safeRead(node.path);
+    const preview = readTextFile(node.path, PREVIEW_READ_LIMIT_BYTES);
+    const text = preview.warning && !preview.truncated ? preview.text : node.excerpt ?? preview.text;
     const payload: FileContentPayload = {
       nodeId: node.id,
       path: node.path,
       text,
+      notice: preview.warning,
     };
     if (node.isBlock && this.graph && !node.excerpt) {
       const skillFile = path.join(this.graph.rootPath, "SKILL.md");
-      const skillText = safeRead(skillFile);
+      const skillText = readTextFile(skillFile, PREVIEW_READ_LIMIT_BYTES).text;
       const rel = path.relative(this.graph.rootPath, node.path).split(path.sep).join("/");
       const wrap = wrapperAroundLink(skillText, rel);
       if (wrap) {
@@ -234,18 +249,24 @@ export class GraphtalePanel {
     }
   }
 
-  private async openInEditor(filePath: string): Promise<void> {
-    if (!fs.existsSync(filePath)) {
-      void vscode.window.showWarningMessage(`File not found: ${filePath}`);
-      return;
+  private async openInEditor(request: Extract<WebviewToHost, { type: "openFile" }>): Promise<void> {
+    const target = resolveOpenTarget([this.procedure, this.graph], request);
+    if (!target) return;
+    try {
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(target.path));
+      const start = Math.min(target.startLine - 1, Math.max(0, doc.lineCount - 1));
+      const end = Math.min(target.endLine - 1, Math.max(0, doc.lineCount - 1));
+      await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.One,
+        selection: new vscode.Range(start, 0, end, 0) });
+    } catch {
+      this.reportError(`Could not open ${target.path}. The file may have moved or become unreadable.`, true);
     }
-    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-    await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.One });
   }
 
   private refreshCatalog(): void {
     const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
-    this.catalog = discoverSkills({ workspaceFolders: folders });
+    this.discoveryWarnings = [];
+    this.catalog = discoverSkills({ workspaceFolders: folders, onWarning: warning => this.discoveryWarnings.push(warning) });
   }
 
   private defaultSkillRoot(): string | undefined {
@@ -257,7 +278,7 @@ export class GraphtalePanel {
   }
 
   private post(message: HostToWebview): void {
-    void this.panel.webview.postMessage(message);
+    void Promise.resolve(this.panel.webview.postMessage(message)).catch(() => { /* Panel was disposed. */ });
   }
 
   private html(): string {
@@ -295,14 +316,6 @@ function emptyGraph(): SkillGraph {
     nodes: [],
     edges: [],
   };
-}
-
-function safeRead(filePath: string): string {
-  try {
-    return fs.readFileSync(filePath, "utf8");
-  } catch {
-    return "";
-  }
 }
 
 function randomNonce(): string {

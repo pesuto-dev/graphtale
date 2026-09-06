@@ -21,7 +21,6 @@ import {
   type LayoutDirection,
   type ProcedureDiagnosis,
   type SkillGraph,
-  type SkillNode,
 } from "@shared/protocol";
 import { selectionAfterReload } from "@shared/reload";
 import { toFlow } from "./layout";
@@ -45,8 +44,8 @@ const emptyGraph: SkillGraph = {
 };
 
 // Keep fit readable; Compact uses a denser grid so allow slightly tighter zoom.
-const FIT_VIEW_OPTIONS = { padding: 0.14, minZoom: 0.5 };
-const COMPACT_FIT_VIEW_OPTIONS = { padding: 0.12, minZoom: 0.55 };
+const FIT_VIEW_OPTIONS = { padding: 0.14, minZoom: 0.2, maxZoom: 1 };
+const COMPACT_FIT_VIEW_OPTIONS = { padding: 0.12, minZoom: 0.2, maxZoom: 1 };
 
 /** Browser preview defaults to Flow; `/preview.html?view=catalog` opens inventory. */
 function initialGraphView(): GraphView {
@@ -87,10 +86,14 @@ function AppShell() {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [content, setContent] = useState<FileContentPayload | undefined>(undefined);
+  const [error, setError] = useState<{ message: string; retryable: boolean }>();
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [stale, setStale] = useState(false);
   // Bumped on open/refresh so the ReactFlow `key` remounts (resets manual zoom/pan).
   const [fitNonce, setFitNonce] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 720);
+  useEffect(() => { const resize = () => setNarrow(window.innerWidth < 720); window.addEventListener("resize", resize); return () => window.removeEventListener("resize", resize); }, []);
   const [compact, setCompact] = useState(() => initialCompact());
   const rootPathRef = useRef("");
   const selectedIdRef = useRef<string | undefined>(undefined);
@@ -118,7 +121,7 @@ function AppShell() {
   // ReactFlow key; resize and expand only re-fit (no remount flicker).
   useEffect(() => {
     return scheduleFit();
-  }, [view, direction, expandedIds, fitNonce, compact, scheduleFit]);
+  }, [view, direction, expandedIds, fitNonce, compact, narrow, inspectorOpen, scheduleFit]);
 
   // Debounced panel resize → re-fit without remounting.
   useEffect(() => {
@@ -148,7 +151,7 @@ function AppShell() {
       }
       observer.disconnect();
     };
-  }, [fitView, compact]);
+  }, [fitView, compact, view, fitNonce]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<unknown>) => {
@@ -204,6 +207,7 @@ function AppShell() {
         setSelectedId(reload.selectedId);
         setContent(undefined);
         setStale(false);
+        setError(undefined);
         setFitNonce((nonce) => nonce + 1);
         setCopyState("idle");
         if (reload.selectedId) {
@@ -219,6 +223,9 @@ function AppShell() {
         return;
       case "stale":
         setStale(message.stale);
+        return;
+      case "error":
+        setError({ message: message.message, retryable: message.retryable });
         return;
       case "copyResult":
         setCopyState(message.ok ? "copied" : "failed");
@@ -238,7 +245,7 @@ function AppShell() {
   const selected = display.nodes.find((node) => node.id === selectedId);
   const flow =
     view === "flow" && compact
-      ? toCompactFlow(display.nodes, display.edges)
+      ? toCompactFlow(display.nodes, display.edges, narrow ? 2 : 4)
       : toFlow(display.nodes, display.edges, direction, expandedIds);
   const agentCount = display.nodes.filter((node) => node.kind === "agent").length;
   const gateCount = display.nodes.filter((node) => node.kind === "gate").length;
@@ -273,6 +280,7 @@ function AppShell() {
 
   function selectNode(id: string): void {
     setSelectedId(id);
+    setInspectorOpen(true);
     vscode.postMessage({ type: "selectNode", nodeId: id });
   }
 
@@ -300,8 +308,7 @@ function AppShell() {
   };
 
   const onNodeDoubleClick: NodeMouseHandler<SkillFlowNode> = (_event, node) => {
-    const data = node.data as SkillNode;
-    vscode.postMessage({ type: "openFile", path: data.path });
+    vscode.postMessage({ type: "openFile", nodeId: node.id });
   };
 
   function toggleDirection(): void {
@@ -311,7 +318,7 @@ function AppShell() {
   }
 
   return (
-    <div className="app">
+    <div className={inspectorOpen ? "app" : "app inspector-closed"}>
       <header className="toolbar">
         <div>
           <div className="title-row">
@@ -339,9 +346,9 @@ function AppShell() {
               ? "Skill files changed in Cursor or VS Code. Refresh to update the graph."
               : view === "flow"
                 ? compact
-                  ? "Compact: same flow order as normal view, denser chips."
-                  : "How this skill runs: ordered steps, agents, forks. Dashed edges are conditional or low-confidence."
-                : "What this skill contains on disk: files, agents, scripts, handoffs. Not runtime order (use Flow for that)."}
+                  ? "Compact overview of the same instructions. Zoom or pan for detail."
+                  : "Supported instruction structure, linked to its source. Dashed edges show inferred or unresolved relationships."
+                : "Files and references found for this skill. Catalog does not imply execution order."}
           </p>
         </div>
         <div className="toolbar-stats">
@@ -387,7 +394,9 @@ function AppShell() {
         </div>
       </header>
       <div className="main main-procedure">
+        {error ? <div className="error-banner" role="alert"><span>{error.message}</span>{error.retryable ? <button onClick={() => vscode.postMessage({ type: "refresh" })}>Retry</button> : null}</div> : null}
         <div className="graph-pane">
+          {(graph.warnings?.length || procedure.warnings?.length) ? <details className="read-warnings"><summary>Some files or steps could not be fully read</summary><ul>{[...new Set([...(graph.warnings ?? []), ...(procedure.warnings ?? [])])].map(warning => <li key={warning}>{warning}</li>)}</ul></details> : null}
           {showDiagnosis ? (
             <div className={`diagnosis-banner confidence-${diagnosis.confidence}`}>
               <div className="diagnosis-copy">
@@ -400,13 +409,16 @@ function AppShell() {
                   </pre>
                 ) : null}
               </div>
+              <div className="diagnosis-actions">
+              <button type="button" onClick={() => switchView("catalog")}>Inspect files in Catalog</button>
+              <details><summary>Optional: clarify the step structure</summary>
               <button type="button" className="fix-prompt-btn" onClick={() => copyFixPrompt()}>
                 {copyState === "copied"
                   ? "Copied. Paste in chat"
                   : copyState === "failed"
                     ? "Copy failed. Select the prompt text"
-                    : "Copy prompt for chat"}
-              </button>
+                    : "Copy clarification prompt"}
+              </button></details></div>
             </div>
           ) : null}
           {view === "catalog" ? (
@@ -414,11 +426,17 @@ function AppShell() {
               nodes={display.nodes}
               selectedId={selectedId}
               onSelect={selectNode}
-              onOpen={(path) => vscode.postMessage({ type: "openFile", path })}
+              onOpen={(nodeId) => vscode.postMessage({ type: "openFile", nodeId })}
             />
+          ) : display.nodes.length === 0 ? (
+            <div className="flow-empty"><p>Review this skill’s files and instructions in Catalog.</p><button onClick={() => switchView("catalog")}>Open Catalog</button></div>
           ) : (
             <>
-              <div className="graph" ref={graphContainerRef}>
+              <div className="graph" ref={graphContainerRef} onKeyDownCapture={event => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                const element = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node");
+                if (element?.dataset.id) { event.preventDefault(); event.stopPropagation(); selectNode(element.dataset.id); }
+              }}>
                 <ReactFlow
                   key={`${graph.rootPath}-${view}-${direction}-${compact}-${fitNonce}`}
                   nodes={flow.nodes.map((node) => ({
@@ -435,7 +453,7 @@ function AppShell() {
                   elementsSelectable
                   fitView
                   fitViewOptions={compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS}
-                  minZoom={compact ? 0.5 : 0.45}
+                  minZoom={0.1}
                   proOptions={{ hideAttribution: true }}
                 >
                   <Background gap={18} size={1} />
@@ -451,6 +469,8 @@ function AppShell() {
         </div>
       </div>
       <Inspector
+        open={inspectorOpen}
+        onToggle={() => setInspectorOpen(value => !value)}
         node={selected}
         content={content}
         edges={display.edges}

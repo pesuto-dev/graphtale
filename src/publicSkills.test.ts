@@ -15,7 +15,7 @@ describe("first-run public skills", () => {
     });
     expect(result.diagnosis.confidence).toBe("none");
     expect(result.graph.nodes).toHaveLength(0);
-    expect(result.diagnosis.message).toMatch(/no numbered steps/i);
+    expect(result.diagnosis.message).toMatch(/No supported step structure/i);
     expect(result.diagnosis.fixPrompt).toMatch(/First Steps|numbered/i);
   });
 
@@ -60,7 +60,7 @@ describe("first-run public skills", () => {
       catalog: [],
       homedir: emptyHome,
     });
-    expect(result.diagnosis.confidence).toBe("high");
+    expect(result.diagnosis.confidence).toBe("partial");
     expect(result.graph.nodes.some((n) => n.id.startsWith("step:"))).toBe(true);
   });
 });

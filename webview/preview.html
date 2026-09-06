@@ -8,6 +8,7 @@
       // Must run before any module that calls acquireVsCodeApi().
       (function () {
         var pending = [];
+        globalThis.__previewMessages = [];
         var handler = null;
         function deliver(data) {
           var event = new MessageEvent("message", { data: data });
@@ -20,6 +21,7 @@
         globalThis.acquireVsCodeApi = function () {
           return {
             postMessage: function (message) {
+              globalThis.__previewMessages.push(message);
               if (!message || typeof message !== "object") {
                 return;
               }

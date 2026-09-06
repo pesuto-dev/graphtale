@@ -15,7 +15,6 @@ vitest.config.ts
 .gitignore
 .cursor/**
 **/.git/**
-TRADEMARK.md
 AGENTS.md
 PLAN.md
 CONTEXT.md
@@ -27,3 +26,14 @@ docs/**
 assets/marketplace/README.md
 assets/compact-baseline/**
 assets/demo-skills/**
+
+!docs/install.md
+!docs/parser-coverage.md
+!docs/skill-locations.md
+
+!docs/file-limits.md
+
+artifacts/**
+.env
+.env.*
+**/*.log

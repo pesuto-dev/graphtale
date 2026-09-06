@@ -1,7 +1,7 @@
 {
   "name": "graphtale",
   "displayName": "Graphtale - Agent Skill Flow",
-  "description": "See the intended runtime of an Agent Skill from the SKILL.md you already wrote, without changing the files.",
+  "description": "Read-only Flow and Catalog views for reviewing an Agent Skill from its existing files.",
   "version": "0.0.1",
   "publisher": "pesuto",
   "author": {
@@ -121,6 +121,7 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "compile": "npm run compile:host && npm run compile:webview",
     "compile:host": "node esbuild.mjs",
     "compile:webview": "vite build",
@@ -133,7 +134,7 @@
     "validate": "npx tsx scripts/validate-skills.ts",
     "screenshots": "npm run compile:webview && npx tsx scripts/capture-marketplace-screenshots.ts",
     "screenshots:demos": "npx tsx scripts/capture-marketplace-screenshots.ts --demos",
-    "package": "npm run compile && vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.5",

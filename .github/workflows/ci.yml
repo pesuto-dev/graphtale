@@ -7,7 +7,10 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,9 +21,9 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run validate
-      - run: npm run compile
       - run: npm run package
       - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest'
         with:
           name: vsix
           path: "*.vsix"

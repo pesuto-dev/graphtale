@@ -3,8 +3,9 @@
 First release is a **viewer** inside Cursor / VS Code. Markdown is edited in the
 editor (human or AI). The graph does **not** write the flow or modify skill files.
 
-Listing sentence: *See the intended runtime of an Agent Skill from the
-SKILL.md you already wrote, without changing the files.*
+Target positioning: **Graphtale — Visual review for Agent Skills.** Explore the
+steps and supporting files described in SKILL.md, with traceable sources and
+visible uncertainty. Updating the listing and UI wording is part of release hardening.
 
 Domain language: [CONTEXT.md](CONTEXT.md), [docs/adr/](docs/adr/).
 Locations: [docs/skill-locations.md](docs/skill-locations.md).
@@ -34,7 +35,11 @@ Key files: `src/parseSkill.ts`, `src/parseProcedure.ts`, `src/discover.ts`,
 
 ## Current slice: release hardening
 
-Ship-toward-marketplace when:
+The actionable plan is [Public preview release plan](docs/release-plan.md).
+Its acceptance criteria are the release gates; previous implementation status
+below does not establish parser correctness on unfamiliar skills.
+
+Previous release preparation:
 
 1. Listing sentence + README match the product (no manager / editor claim).
 2. First-run on public-style fixtures: Flow useful **or** honest `none`.

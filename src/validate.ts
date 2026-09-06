@@ -44,7 +44,7 @@ export function validateSkills(
   const seen = new Set(skills.map((skill) => path.resolve(skill.rootPath)));
 
   for (const skill of skills) {
-    issues.push(...issuesForSkill(skill.rootPath, skill));
+    issues.push(...issuesForSkill(skill.rootPath));
   }
 
   for (const extra of options.extraSkillRoots ?? []) {
@@ -63,7 +63,7 @@ export function validateSkills(
       frontmatterError: meta.error,
     };
     skills.push(catalogSkill);
-    issues.push(...issuesForSkill(root, catalogSkill));
+    issues.push(...issuesForSkill(root));
   }
 
   skills.sort((a, b) => a.name.localeCompare(b.name));
@@ -108,6 +108,8 @@ export function defaultFixtureRoots(repoRoot: string): {
       path.join(fixtures, "analyse-ticket-pn"),
       ...extraRootsFromTree(path.join(fixtures, "public-skills")),
       ...extraRootsFromTree(path.join(fixtures, "demo-skills")),
+      ...extraRootsFromTree(path.join(fixtures, "parser-regressions")),
+      ...extraRootsFromTree(path.join(fixtures, "release-samples")),
     ],
   };
 }
@@ -128,7 +130,7 @@ export function hasBlockingIssues(issues: ValidationIssue[]): boolean {
   return issues.some((issue) => issue.kind === "yaml" || issue.kind === "io");
 }
 
-function issuesForSkill(skillRoot: string, skill: CatalogSkill): ValidationIssue[] {
+function issuesForSkill(skillRoot: string): ValidationIssue[] {
   const skillFile = path.join(skillRoot, "SKILL.md");
   const issues: ValidationIssue[] = [];
   const meta = readFrontmatter(skillFile);

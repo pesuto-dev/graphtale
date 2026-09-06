@@ -33,7 +33,7 @@ describe("compactFromQuery", () => {
 describe("emptyDiagnosis", () => {
   it("says when Flow is missing, not that the skill is broken", () => {
     const diagnosis = emptyDiagnosis("prose-only");
-    expect(diagnosis.message).toMatch(/no numbered steps/i);
+    expect(diagnosis.message).toMatch(/No supported step structure/i);
     expect(diagnosis.fixPrompt).not.toMatch(/so a viewer can show/i);
     expect(diagnosis.fixPrompt).not.toMatch(/Procedure/);
     expect(diagnosis.fixPrompt).toMatch(/Do not invent new work/);
@@ -50,8 +50,8 @@ describe("diagnosis copy", () => {
   });
 
   it("tells authors when the none banner is needed", () => {
-    expect(diagnosisTitle("none")).toMatch(/No flow in this markdown/);
-    expect(diagnosisNeededWhen("none")).toMatch(/only if you want Flow/i);
+    expect(diagnosisTitle("none")).toMatch(/No supported step structure detected/);
+    expect(diagnosisNeededWhen("none")).toMatch(/without rewriting/i);
   });
 
   it("tells authors when a partial workflow needs finishing", () => {

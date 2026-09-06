@@ -427,6 +427,7 @@ export function compactNodeBoxesOverlap(
 export function toCompactFlow(
   inputNodes: SkillNode[],
   inputEdges: SkillEdge[],
+  colsPerRow = COMPACT_COLS,
 ): { nodes: SkillFlowNode[]; edges: CompactEdge[] } {
   const { nodes, edges } = filterForCompact(inputNodes, inputEdges);
   if (nodes.length === 0) {
@@ -435,7 +436,7 @@ export function toCompactFlow(
 
   const levels = compactLevels(nodes, edges);
   const columns = columnsFromLevels(levels, edges);
-  const rows = packCompactRows(columns, COMPACT_COLS, edges);
+  const rows = packCompactRows(columns, colsPerRow, edges);
   const { places, rowBottoms } = placeNodes(rows);
 
   const wrapLaneByRow = new Map<number, number>();
