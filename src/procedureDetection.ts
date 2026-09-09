@@ -135,29 +135,112 @@ function extractPn(text: string, sourcePath: string): Detection | undefined {
     if (heading) excluded = EXCLUDED.test(heading[2]);
     if (excluded) continue;
     const row = lines[i].match(/^\s*(P|N\d+[a-z]?)\s+(.+?)(?:\s{2,}(.+))?\s*$/i);
-    if (!row || /->|→/.test(row[2])) continue;
+    const sequential = lines[i].trim().match(/^(P|N\d+[a-z]?)\s+(?:then|next|(?:is\s+)?followed by|continue(?:s)?\s+(?:with|to)|go(?:es)?\s+to)\s+(P|N\d+[a-z]?)\.?$/i);
+    if (!row || /->|→/.test(row[2]) || sequential) continue;
     steps.push({ display: row[1], title: row[2], resource: row[3], body: lines[i].trim(), source: { path: sourcePath, startLine: i + 1, endLine: i + 1 } });
   }
   if (!steps.length) return undefined;
   const links: DetectedLink[] = [];
   let invalid = false;
   const indexFor = (id: string) => steps.map((s, i) => s.display === id ? i : -1).filter(i => i >= 0);
+  const reachable = (start: number, target: number, seen = new Set<number>()): boolean => {
+    if (start === target) return true;
+    if (seen.has(start)) return false;
+    seen.add(start);
+    return links.some(link => link.from === start && reachable(link.to, target, seen));
+  };
+  const addLink = (fromId: string, toId: string, line: number, label?: string) => {
+    const from = indexFor(fromId), to = indexFor(toId);
+    if (from.length !== 1 || to.length !== 1 || from[0] === to[0]) { invalid = true; return; }
+    if (reachable(to[0], from[0])) { invalid = true; return; }
+    if (!links.some(edge => edge.from === from[0] && edge.to === to[0])) {
+      links.push({ from: from[0], to: to[0], label, source: { path: sourcePath, startLine: line, endLine: line } });
+    }
+  };
+  const id = "(P|N\\d+[a-z]?)";
+  const listIds = (value: string): string[] | undefined => {
+    const ids = [...value.matchAll(new RegExp(id, "gi"))].map(match => match[1]);
+    return ids.length && value.replace(new RegExp(id, "gi"), "").replace(/\b(?:and|,|\s)+\b/gi, "").trim() === "" ? ids : undefined;
+  };
   for (let i = 0; i < lines.length; i++) {
     const edge = lines[i].trim().match(/^(P|N\d+[a-z]?)\s*(?:->|→)\s*(P|N\d+[a-z]?)(?:\s+\(([^)]+)\))?\s*$/i);
-    if (!edge) {
-      if (/^\s*(P|N\d+[a-z]?)\s*(?:->|→)/i.test(lines[i])) invalid = true;
+    if (edge) {
+      addLink(edge[1], edge[2], i + 1, edge[3]);
       continue;
     }
-    const from = indexFor(edge[1]), to = indexFor(edge[2]);
-    if (from.length !== 1 || to.length !== 1 || from[0] === to[0]) { invalid = true; continue; }
-    const reachable = (start: number, target: number, seen = new Set<number>()): boolean => {
-      if (start === target) return true;
-      if (seen.has(start)) return false;
-      seen.add(start);
-      return links.some(link => link.from === start && reachable(link.to, target, seen));
+    if (/^\s*(P|N\d+[a-z]?)\s*(?:->|→)/i.test(lines[i])) { invalid = true; continue; }
+
+    const prose = lines[i].trim();
+    const sequential = prose.match(new RegExp(`^${id}\\s+(?:then|next|(?:is\\s+)?followed by|continue(?:s)?\\s+(?:with|to)|go(?:es)?\\s+to)\\s+${id}\\.?$`, "i"));
+    if (sequential) { addLink(sequential[1], sequential[2], i + 1); continue; }
+
+    const parallel = prose.match(new RegExp(`^From\\s+${id},\\s*(?:run|start|perform)\\s+(.+?)\\s+in\\s+parallel\\.?$`, "i"));
+    if (parallel) {
+      const targets = listIds(parallel[2]);
+      if (targets) for (const target of targets) addLink(parallel[1], target, i + 1);
+      else invalid = true;
+      continue;
+    }
+
+    const join = prose.match(new RegExp(`^After\\s+(.+?),\\s*(?:continue|go)\\s+(?:with|to)\\s+${id}\\.?$`, "i"));
+    if (join) {
+      const sources = listIds(join[1]);
+      if (sources) for (const source of sources) addLink(source, join[2], i + 1);
+      else invalid = true;
+      continue;
+    }
+
+    const conditional = prose.match(new RegExp(`^From\\s+${id},\\s*if\\s+(.+?),\\s*continue\\s+(?:with|to)\\s+${id};\\s*otherwise,\\s*(?:continue\\s+(?:with|to)\\s+)?${id}\\.?$`, "i"));
+    if (conditional) {
+      addLink(conditional[1], conditional[3], i + 1, `if ${conditional[2]}`);
+      addLink(conditional[1], conditional[4], i + 1, "otherwise");
+    }
+  }
+  const diagramWord = (word: string, line: string) => new RegExp(`(?:─.*\\b${word}\\b|\\b${word}\\b.*─)`, "i").test(line);
+  const isDiagramMarker = (line: string) => /[┐┘↓]/.test(line) || ["parallel", "barrier", "join"].some(word => diagramWord(word, line));
+  if (lines.some(isDiagramMarker)) {
+    const parallelSteps = new Set<number>();
+    const indexBefore = (line: number) => {
+      for (let index = steps.length - 1; index >= 0; index--) if (steps[index].source.startLine <= line) return index;
+      return -1;
     };
-    if (reachable(to[0], from[0])) { invalid = true; continue; }
-    if (!links.some(e => e.from === from[0] && e.to === to[0])) links.push({ from: from[0], to: to[0], label: edge[3], source: { path: sourcePath, startLine: i + 1, endLine: i + 1 } });
+    const indexAfter = (line: number) => steps.findIndex(step => step.source.startLine > line);
+    const addByIndex = (from: number, to: number, line: number, label?: string) => {
+      if (from >= 0 && to >= 0) addLink(steps[from].display, steps[to].display, line, label);
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      if (diagramWord("parallel", lines[i])) {
+        const barrier = lines.findIndex((line, index) => index > i && diagramWord("barrier", line));
+        const from = indexBefore(i + 1), to = barrier >= 0 ? indexAfter(barrier + 1) : -1;
+        const branches = steps.map((step, index) => ({ step, index })).filter(({ step }) =>
+          step.source.startLine > i + 1 && (barrier < 0 || step.source.startLine < barrier + 1),
+        );
+        if (from < 0 || to < 0 || !branches.length) { invalid = true; continue; }
+        for (const { index } of branches) {
+          parallelSteps.add(index);
+          addByIndex(from, index, i + 1);
+          addByIndex(index, to, barrier + 1);
+        }
+      }
+      const branch = lines[i].match(/^\s*(.+?)\s+↓(?:\s*[│|])?\s*$/);
+      if (branch) addByIndex(indexBefore(i + 1), indexAfter(i + 1), i + 1, branch[1].trim());
+      const bypass = lines[i].match(/^\s*(.+?)\s+─+.*┐\s*$/);
+      if (bypass) {
+        const from = indexBefore(i + 1);
+        const to = steps.findIndex(step => step.source.startLine > i + 1 && lines[step.source.startLine - 1].includes("│"));
+        if (to < 0) invalid = true;
+        else addByIndex(from, to, i + 1, bypass[1].trim());
+      }
+      if (diagramWord("join", lines[i])) addByIndex(indexBefore(i + 1), indexAfter(i + 1), i + 1);
+    }
+
+    for (let i = 0; i + 1 < steps.length; i++) {
+      const between = lines.slice(steps[i].source.endLine, steps[i + 1].source.startLine - 1);
+      if (!parallelSteps.has(i) && !parallelSteps.has(i + 1) && !between.some(isDiagramMarker)) {
+        addByIndex(i, i + 1, steps[i + 1].source.startLine);
+      }
+    }
   }
   const covered = new Set<number>();
   const visit = (index: number) => {

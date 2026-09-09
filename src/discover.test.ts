@@ -91,6 +91,52 @@ description: Legacy Claude copy.
     expect(dups.some((s) => s.rootPath.includes(`${path.sep}.codex${path.sep}`))).toBe(true);
     expect(dups.some((s) => s.rootPath.includes(`${path.sep}.claude${path.sep}`))).toBe(true);
   });
+
+  it("discovers symlinked skill directories and deduplicates their real target", () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "skill-ws-"));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "skill-home-"));
+    const target = path.join(home, ".agents", "skills", "plugin-skill");
+    const claudeRoot = path.join(home, ".claude", "skills");
+    writeSkill(target, {
+      "SKILL.md": `---
+name: plugin-skill
+description: Installed by a plugin.
+---
+`,
+    });
+    fs.mkdirSync(claudeRoot, { recursive: true });
+    fs.symlinkSync(target, path.join(claudeRoot, "plugin-skill"), "dir");
+
+    const skills = discoverSkills({ workspaceFolders: [workspace], homedir: home });
+    const matches = skills.filter((skill) => skill.name === "plugin-skill");
+    expect(matches).toHaveLength(1);
+    expect(matches[0].rootPath).toBe(path.join(home, ".claude", "skills", "plugin-skill"));
+  });
+
+  it("discovers skills from installed Claude plugins", () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "skill-ws-"));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "skill-home-"));
+    const installPath = path.join(home, ".claude", "plugins", "cache", "example-marketplace", "example-tools", "1.0.0");
+    writeSkill(installPath, {
+      "skills/plugin-skill/SKILL.md": `---
+name: plugin-skill
+description: Installed Claude plugin skill.
+---
+`,
+    });
+    writeSkill(home, {
+      ".claude/plugins/installed_plugins.json": JSON.stringify({
+        version: 2,
+        plugins: {
+          "example-tools@example-marketplace": [{ scope: "user", installPath }],
+        },
+      }),
+    });
+
+    const skills = discoverSkills({ workspaceFolders: [workspace], homedir: home });
+    expect(skills.find((skill) => skill.name === "plugin-skill")?.rootPath)
+      .toBe(path.join(installPath, "skills", "plugin-skill"));
+  });
 });
 
 describe("skillLocationLabel", () => {

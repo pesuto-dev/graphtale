@@ -21,8 +21,18 @@ The viewer only reads. It never moves or writes skill files.
 | `~/.agents/skills/` | Vendor / marketplace user skills |
 
 A skill that exists as both `~/.codex/skills/foo` and `~/.claude/skills/foo` is
-listed twice. Prefer one root and delete or stop maintaining the other. This
-viewer does not migrate copies.
+listed twice unless both paths resolve to the same directory (for example, a
+plugin-managed symlink). Prefer one root and delete or stop maintaining the
+other. This viewer does not migrate copies.
+
+Directory symlinks are followed for discovery. The viewer keeps the first
+discovered path as the display/open path and deduplicates aliases by their real
+target. Catalog inventory remains symlink-free to avoid cycles.
+
+Claude Code plugin skills are also discovered from the installed plugin records
+in `~/.claude/plugins/installed_plugins.json`. The viewer reads each installed
+plugin's `skills/` directory, including marketplace plugins such as
+`example-marketplace`.
 
 ## Optional Codex sidecar
 

@@ -50,10 +50,110 @@ it("keeps a linked resource separate from instruction source and full title", ()
 });
 it("draws only exact P/N arrow statements and records their evidence", () => {
   const result = parse("See [workflow](workflow.md)", { "workflow.md": "# Workflow\n```text\nN3  Choose\nN4  Bake\nN5  Cool\nN3 -> N4 (hot)\nN3 -> N5 (cold)\n```" });
-  expect(result.diagnosis.confidence).toBe("high");
   const edges = result.graph.edges.filter(e => e.from.startsWith("step:"));
+  expect(result.diagnosis.confidence).toBe("high");
   expect(edges.map(e => [e.from, e.to, e.label])).toEqual([["step:N3", "step:N4", "hot"], ["step:N3", "step:N5", "cold"]]);
   expect(edges.every(e => e.source?.path === path.join(result.root, "workflow.md") && e.relationship === "explicit")).toBe(true);
+});
+it("draws source-backed P/N routes stated in workflow prose", () => {
+  const result = parse("See [workflow](workflow.md)", { "workflow.md": `# Workflow
+\`\`\`text
+P   Intake
+N1  Split
+N2a Research
+N2b Verify
+N3  Combine
+N4  Explain
+N5  Investigate
+N6  Return
+\`\`\`
+
+P then N1.
+From N1, run N2a and N2b in parallel.
+After N2a and N2b, continue with N3.
+From N3, if the request is a question, continue with N4; otherwise, continue with N5.
+N4 then N6.
+N5 then N6.
+` });
+  const edges = result.graph.edges.filter(e => e.from.startsWith("step:"));
+  expect(result.diagnosis.confidence).toBe("high");
+  expect(edges.map(e => [e.from, e.to, e.label, e.source?.startLine])).toEqual([
+    ["step:P", "step:N1", undefined, 13],
+    ["step:N1", "step:N2a", undefined, 14],
+    ["step:N1", "step:N2b", undefined, 14],
+    ["step:N2a", "step:N3", undefined, 15],
+    ["step:N2b", "step:N3", undefined, 15],
+    ["step:N3", "step:N4", "if the request is a question", 16],
+    ["step:N3", "step:N5", "otherwise", 16],
+    ["step:N4", "step:N6", undefined, 17],
+    ["step:N5", "step:N6", undefined, 18],
+  ]);
+});
+it("does not turn P/N mentions or output arrows into routes", () => {
+  const result = parse("See [workflow](workflow.md)", { "workflow.md": `# Workflow
+\`\`\`text
+P   Intake -> Bundle
+N1  Split -> Jobs
+N2  Return
+\`\`\`
+
+N1 produces an output for N2 readers.
+The P -> Bundle notation names an output, not a route.
+` });
+  expect(result.diagnosis.confidence).toBe("partial");
+  expect(result.graph.edges.filter(e => e.from.startsWith("step:"))).toHaveLength(0);
+});
+it("retains P/N row titles that start with routing words", () => {
+  const result = parse("See [workflow](workflow.md)", { "workflow.md": `# Workflow
+\`\`\`text
+N1  Next steps
+N2  Continue with deployment
+N3  Go to market review
+\`\`\`
+` });
+  const steps = result.graph.nodes.filter(node => node.id.startsWith("step:"));
+  expect(steps.map(node => node.label)).toEqual([
+    "N1. Next steps", "N2. Continue with deployment", "N3. Go to market review",
+  ]);
+  expect(result.diagnosis.confidence).toBe("partial");
+});
+it("draws the routes stated by a P/N diagram's parallel, barrier, and labeled branch markers", () => {
+  const result = parse("See [workflow](workflow.md)", { "workflow.md": `# Workflow
+
+The graph, node by node.
+
+\`\`\`
+P   Preflight
+N1  Resolve
+      ── parallel ──
+      N2a Attachments
+      N2b Evidence
+      N2c Prior
+      ── barrier ──
+N3  Classify
+      Question ────────┐
+      Bug | Change ↓   │
+N4  Forensics
+N5  Synthesis          │
+      ── join ─────────┘
+N6  Validate
+\`\`\`
+` });
+  const edges = result.graph.edges.filter(edge => edge.from.startsWith("step:"));
+  expect(edges.map(edge => [edge.from, edge.to, edge.label, edge.source?.startLine])).toEqual([
+    ["step:N1", "step:N2a", undefined, 8],
+    ["step:N2a", "step:N3", undefined, 12],
+    ["step:N1", "step:N2b", undefined, 8],
+    ["step:N2b", "step:N3", undefined, 12],
+    ["step:N1", "step:N2c", undefined, 8],
+    ["step:N2c", "step:N3", undefined, 12],
+    ["step:N3", "step:N5", "Question", 14],
+    ["step:N3", "step:N4", "Bug | Change", 15],
+    ["step:N5", "step:N6", undefined, 18],
+    ["step:P", "step:N1", undefined, 7],
+    ["step:N4", "step:N5", undefined, 17],
+  ]);
+  expect(result.diagnosis.confidence).toBe("high");
 });
 it("does not detect P/N examples in a program fence", () => {
   const result = parse("See [workflow](workflow.md)", { "workflow.md": "# Workflow\n```python\nN3  Bake  scripts/bake.py\nN4  Cool  scripts/cool.py\n```" });

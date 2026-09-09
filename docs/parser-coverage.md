@@ -22,6 +22,11 @@ observe execution. Parsing never writes skill files.
   a fork; labels belong to their stated arrows. Arrows to absent or duplicate IDs,
   unsupported arrow expressions, disconnected components and cycles give partial
   coverage. Cyclic edges are omitted because the viewer lays out a DAG.
+- P/N diagram fences can state routes with visual markers: `parallel` and `barrier`
+  create a fan-out and rejoin; a labeled `↓` or `┐` creates a labeled branch; `join`
+  reconnects it. Ordinary rows form a sequence only inside such a marked diagram.
+  Each derived edge refers to its marker or displayed target row. P/N tables without
+  diagram markers remain unresolved.
 
 Examples, alternatives, choices, options, notes and appendix sections are excluded.
 Matching fence characters and lengths are respected; frontmatter retains its line

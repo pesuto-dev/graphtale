@@ -14,6 +14,7 @@ Expectations were written before parsing these samples:
 | linked-checklist | Inspect, Verify, Return | Two sequential edges | operations.md lines 1, 3, 5 |
 | asset-report | Read template, run script, return | Two sequential edges | SKILL.md lines 7–9; resources separate |
 | explicit-routing | Inspect, Explain, Investigate, Return | Question/change fork and join | workflow.md lines 3–6; arrows 7–10 |
+| prose-pn-routing | Intake, split, parallel research/verify, combine, conditional route, return | Fan-out, join, conditional route | workflow.md lines 13–18 |
 | ambiguous-route | Two alternatives retained | No sequence between alternatives | SKILL.md lines 8–9 |
 
 Inspect expected source ranges and resource paths in the sample tests. Catalog

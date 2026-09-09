@@ -46,19 +46,46 @@ export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
   for (const rel of USER_SKILL_DIRS) {
     roots.push(path.join(homedir, rel));
   }
+  roots.push(...claudePluginSkillDirs(homedir));
 
   const byPath = new Map<string, CatalogSkill>();
   for (const root of roots) {
     if (byPath.size >= INVENTORY_MAX_FILES) { options.onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills.`); break; }
     for (const skill of listSkillsIn(root, options.onWarning)) {
       if (byPath.size >= INVENTORY_MAX_FILES) break;
-      const key = path.resolve(skill.rootPath);
+      const key = discoveryKey(skill.rootPath);
       if (!byPath.has(key)) {
         byPath.set(key, skill);
       }
     }
   }
   return [...byPath.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function claudePluginSkillDirs(homedir: string): string[] {
+  const installedPath = path.join(homedir, ".claude", "plugins", "installed_plugins.json");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(installedPath, "utf8"));
+  } catch {
+    return [];
+  }
+  if (!parsed || typeof parsed !== "object") return [];
+  const plugins = (parsed as Record<string, unknown>).plugins;
+  if (!plugins || typeof plugins !== "object") return [];
+
+  const roots: string[] = [];
+  for (const value of Object.values(plugins as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    for (const install of value) {
+      if (!install || typeof install !== "object") continue;
+      const installPath = (install as Record<string, unknown>).installPath;
+      if (typeof installPath === "string" && installPath.length > 0) {
+        roots.push(path.join(installPath, "skills"));
+      }
+    }
+  }
+  return roots;
 }
 
 function listSkillsIn(root: string, onWarning?: (message: string) => void): CatalogSkill[] {
@@ -77,10 +104,13 @@ function listSkillsIn(root: string, onWarning?: (message: string) => void): Cata
   const skills: CatalogSkill[] = [];
   for (const entry of entries) {
     if (skills.length >= INVENTORY_MAX_FILES) { onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills in ${root}.`); break; }
-    if (!entry.isDirectory()) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) {
       continue;
     }
     const skillRoot = path.join(root, entry.name);
+    if (!isDirectory(skillRoot)) {
+      continue;
+    }
     const skillFile = path.join(skillRoot, SKILL_FILE);
     if (!fs.existsSync(skillFile)) {
       continue;
@@ -98,6 +128,14 @@ function listSkillsIn(root: string, onWarning?: (message: string) => void): Cata
     });
   }
   return skills;
+}
+
+function discoveryKey(rootPath: string): string {
+  try {
+    return fs.realpathSync(rootPath);
+  } catch {
+    return path.resolve(rootPath);
+  }
 }
 
 export function readFrontmatter(skillFile: string): Frontmatter {

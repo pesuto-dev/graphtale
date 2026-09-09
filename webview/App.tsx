@@ -59,12 +59,16 @@ function initialDirection(view: GraphView): LayoutDirection {
   return view === "flow" ? "TB" : "LR";
 }
 
-/** Browser preview: `/preview.html?view=flow&compact=1`. */
+/**
+ * Start in Compact so long, connected procedures remain legible in an editor
+ * column. `compact=0` explicitly selects the detailed layout.
+ */
 function initialCompact(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
-  return compactFromQuery(window.location.search);
+  const params = new URLSearchParams(window.location.search);
+  return !params.has("compact") || compactFromQuery(window.location.search);
 }
 
 export function App() {

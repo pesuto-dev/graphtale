@@ -10,6 +10,7 @@ const expected = [
   ["linked-checklist", "high", 3, 2, "references/operations.md", [1, 3, 5]],
   ["asset-report", "high", 3, 2, "SKILL.md", [7, 8, 9]],
   ["explicit-routing", "high", 4, 4, "workflow.md", [3, 4, 5, 6]],
+  ["prose-pn-routing", "high", 8, 9, "workflow.md", [4, 5, 6, 7, 8, 9, 10, 11]],
   ["ambiguous-route", "partial", 2, 0, "SKILL.md", [8, 9]],
 ] as const;
 it.each(expected)("reviews %s against independent expectations", (name, confidence, count, edgeCount, source, lines) => {
@@ -30,5 +31,10 @@ it.each(expected)("reviews %s against independent expectations", (name, confiden
   }
   if (name === "explicit-routing") expect(edges.map(e => [e.from, e.to, e.label])).toEqual([
     ["step:N1", "step:N2", "question"], ["step:N1", "step:N3", "change"], ["step:N2", "step:N4", undefined], ["step:N3", "step:N4", undefined],
+  ]);
+  if (name === "prose-pn-routing") expect(edges.map(e => [e.from, e.to, e.label])).toEqual([
+    ["step:P", "step:N1", undefined], ["step:N1", "step:N2a", undefined], ["step:N1", "step:N2b", undefined],
+    ["step:N2a", "step:N3", undefined], ["step:N2b", "step:N3", undefined], ["step:N3", "step:N4", "if the request is a question"],
+    ["step:N3", "step:N5", "otherwise"], ["step:N4", "step:N6", undefined], ["step:N5", "step:N6", undefined],
   ]);
 });
