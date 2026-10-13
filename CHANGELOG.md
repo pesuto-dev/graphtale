@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First public release of Graphtale. `0.0.1` was an unpublished development
 version; it was not released to npm, the Visual Studio Marketplace, or Open VSX.
 
+### Changed
+
+- Minimum VS Code version is `^1.125.0`, the same version as the installed `@types/vscode` types the extension is compiled against.
+
 ### Added
 
 - Read-only Cursor and VS Code extension that reviews an Agent Skill from the files already on disk. It does not edit, install, or execute the skill.

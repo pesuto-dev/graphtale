@@ -12,7 +12,7 @@ The preview is local. The extension reads skill files through the editor and
 workspace APIs and does not require an account, backend, network service, or
 API key. It does not execute skills or modify them.
 
-The package targets VS Code `^1.90.0` and compatible Cursor builds. The parser
+The package targets VS Code `^1.125.0` and compatible Cursor builds. The parser
 supports the structures listed in [parser coverage](parser-coverage.md); an
 empty or partial diagnosis is expected for prose-only or ambiguous skills.
 This is a hobby project with community support expectations rather than a

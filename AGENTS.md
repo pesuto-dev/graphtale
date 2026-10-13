@@ -17,7 +17,7 @@ Shared types live in `src/shared/protocol.ts` and are aliased as `@shared` in th
 - Validate skill fixtures: `npm run validate`
 - Build both bundles: `npm run compile` (or `npm run watch:host` / `npm run watch:webview` for dev)
 
-Node 22 works; `engines` only pins `vscode ^1.90.0`, not Node.
+Node 22 works; `engines` only pins `vscode ^1.125.0`, not Node.
 
 ### Running / verifying the app in the cloud VM (non-obvious)
 
