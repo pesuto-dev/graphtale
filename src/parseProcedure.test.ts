@@ -189,7 +189,7 @@ N7  write            scripts/write_report.py
       "P. preflight", "N1. resolve", "N2a. attachments", "N2b. evidence", "N2c. prior",
       "N3. classify", "N4. inspect", "N4v. verify", "N5. synthesis", "N5v. review", "N6. validate", "N7. write",
     ]);
-    expect(runtime.every((node) => node.source?.path.endsWith("references/workflow.md"))).toBe(true);
+    expect(runtime.every((node) => node.source?.path.endsWith(path.join("references", "workflow.md")))).toBe(true);
     expect(runtime.every((node) => node.source && node.source.startLine === node.source.endLine)).toBe(true);
     expect(result.graph.nodes.some((node) => node.kind === "gate")).toBe(false);
     expect(result.graph.edges.filter((edge) => edge.from.startsWith("step:") || edge.to.startsWith("step:"))).toHaveLength(0);

@@ -2,15 +2,17 @@
   "name": "graphtale",
   "displayName": "Graphtale - Agent Skill Flow",
   "description": "Read-only Flow and Catalog views for reviewing an Agent Skill from its existing files.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "pesuto",
   "author": {
     "name": "pesuto",
     "email": "ben@pesuto.dev",
     "url": "https://pesuto.dev"
   },
-  "homepage": "https://pesuto.dev/",
-  "bugs": "https://github.com/pesuto-dev/graphtale/issues",
+  "homepage": "https://github.com/pesuto-dev/graphtale",
+  "bugs": {
+    "url": "https://github.com/pesuto-dev/graphtale/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/pesuto-dev/graphtale.git"
@@ -35,7 +37,28 @@
     "visualization",
     "cursor",
     "claude",
-    "codex"
+    "codex",
+    "vscode-extension"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/extension.js",
+    "dist/webview/",
+    "assets/icon.png",
+    "assets/icon.svg",
+    "assets/marketplace/*.png",
+    "docs/install.md",
+    "docs/parser-coverage.md",
+    "docs/skill-locations.md",
+    "docs/file-limits.md",
+    "LICENSE",
+    "NOTICE",
+    "TRADEMARK.md",
+    "THIRD_PARTY_NOTICES.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md"
   ],
   "engines": {
     "vscode": "^1.90.0"
@@ -122,6 +145,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "prepublishOnly": "npm run compile",
+    "lint": "eslint .",
     "compile": "npm run compile:host && npm run compile:webview",
     "compile:host": "node esbuild.mjs",
     "compile:webview": "vite build",
@@ -145,18 +170,21 @@
     "yaml": "2.9.0"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.9.2",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.13.10",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.25.2",
+    "eslint": "^10.12.0",
     "playwright": "^1.62.1",
     "tsx": "^4.20.5",
     "typescript": "^5.8.2",
+    "typescript-eslint": "^8.71.2",
     "vite": "^6.2.2",
-    "vitest": "^3.0.9"
+    "vitest": "^5.0.4"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
