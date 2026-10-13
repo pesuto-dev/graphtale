@@ -44,7 +44,7 @@ Node 22 works; `engines` only pins `vscode ^1.125.0`, not Node.
   - Skills on disk are never modified; preview is read-only like the extension.
 
 
-Product direction lives in [PLAN.md](PLAN.md). Current slice is viewer polish; flow editor and later items are parked.
+The public product is the read-only viewer. The flow editor and later items stay parked.
 
 ### Tests / fixtures (non-obvious)
 

@@ -8,4 +8,4 @@ accepted
 
 ## Consequences
 
-Repair happens through Diagnosis + Fix path (for example an LLM prompt), not through graph writes. PLAN.md “Parked — flow editor” still applies.
+Repair happens through Diagnosis + Fix path (for example an LLM prompt), not through graph writes. The flow editor stays parked until the viewer is in daily use.
