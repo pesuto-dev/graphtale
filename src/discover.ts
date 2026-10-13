@@ -159,7 +159,7 @@ export function parseFrontmatter(text: string): Frontmatter {
   let parsed: unknown;
   try {
     parsed = parseYaml(match[1]);
-  } catch (err) {
+  } catch {
     return {
       name: "",
       description: "",

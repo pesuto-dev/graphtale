@@ -31,8 +31,7 @@ target. Catalog inventory remains symlink-free to avoid cycles.
 
 Claude Code plugin skills are also discovered from the installed plugin records
 in `~/.claude/plugins/installed_plugins.json`. The viewer reads each installed
-plugin's `skills/` directory, including marketplace plugins such as
-`example-marketplace`.
+plugin's `skills/` directory.
 
 ## Optional Codex sidecar
 

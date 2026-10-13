@@ -43,7 +43,7 @@ export function detectSteps(text: string, sourcePath: string): Detection | undef
   const original = text.split(/\r?\n/);
   const lines = visibleLines(text);
   const groups: Array<{ steps: DetectedStep[]; kind: Detection["sourceKind"]; ambiguous?: boolean }> = [];
-  let parents: Array<{ level: number; excluded: boolean }> = [];
+  const parents: Array<{ level: number; excluded: boolean }> = [];
   let active = true;
   let context = "";
   let group: typeof groups[number] | undefined;

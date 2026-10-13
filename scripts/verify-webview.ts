@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { parseSkill } from "../src/parseSkill";
 import { parseProcedure } from "../src/parseProcedure";
+
+type PreviewMessage = { type?: string; nodeId?: string; target?: string };
 async function main() {
 const root = process.cwd();
 const output = path.join(root, "artifacts/webview-check");
@@ -29,7 +31,7 @@ try {
   await page.screenshot({ path: path.join(output, 'dark-overview.png') });
   await page.locator('[data-id="step:1"]').click();
   await page.getByRole('button', { name: 'Open instruction', exact: true }).click();
-  assert(await page.evaluate(() => (globalThis as any).__previewMessages.some((m: any) => m.type === 'openFile' && m.nodeId === 'step:1')));
+  assert(await page.evaluate(() => ((globalThis as { __previewMessages?: PreviewMessage[] }).__previewMessages ?? []).some((message) => message.type === "openFile" && message.nodeId === "step:1")));
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
   await page.keyboard.press('Tab');
   await page.getByRole('button', { name: 'Catalog', exact: true }).focus();
@@ -42,7 +44,7 @@ try {
   await page.evaluate(message => window.postMessage(message, '*'), { type: 'graph', graph: parseSkill({ skillRoot: sample, catalog: [] }), procedure: parsed.graph, diagnosis: parsed.diagnosis, catalog: [], direction: 'TB' });
   await page.locator('[data-id="step:1"]').click();
   await page.getByRole('button', { name: 'Open referenced resource', exact: true }).click();
-  assert(await page.evaluate(() => (globalThis as any).__previewMessages.some((m: any) => m.type === 'openFile' && m.target === 'resource')));
+  assert(await page.evaluate(() => ((globalThis as { __previewMessages?: PreviewMessage[] }).__previewMessages ?? []).some((message) => message.type === "openFile" && message.target === "resource")));
   await page.evaluate(() => window.postMessage({ type: 'error', message: 'Could not read test file. Previous view preserved.', retryable: true }, '*'));
   await page.getByRole('alert').waitFor({ state: 'visible' });
   await page.setViewportSize({ width: 320, height: 820 });
