@@ -176,7 +176,7 @@
     "@types/react-dom": "^18.3.5",
     "@types/vscode": "^1.90.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vscode/vsce": "^3.9.2",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.25.2",
     "eslint": "^10.12.0",
     "playwright": "^1.62.1",
@@ -184,7 +184,7 @@
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.71.2",
     "vite": "^6.2.2",
-    "vitest": "^3.0.9"
+    "vitest": "^5.0.4"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

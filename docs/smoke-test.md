@@ -36,4 +36,5 @@ Screenshots are written to ignored `artifacts/webview-check/`.
 
 Also test source and external resource actions, delete/restore SKILL.md and use
 Retry, copy the optional clarification prompt, and navigate using only the
-keyboard in both editors. Record results in release-verification.md.
+keyboard in both editors. Keep that record with the release notes for the
+version you tested.

@@ -7,7 +7,7 @@ Target positioning: **Graphtale — Visual review for Agent Skills.** Explore th
 steps and supporting files described in SKILL.md, with traceable sources and
 visible uncertainty. Updating the listing and UI wording is part of release hardening.
 
-Domain language: [CONTEXT.md](CONTEXT.md), [docs/adr/](docs/adr/).
+Domain decisions: [docs/adr/](docs/adr/).
 Locations: [docs/skill-locations.md](docs/skill-locations.md).
 
 ## Done
@@ -35,9 +35,10 @@ Key files: `src/parseSkill.ts`, `src/parseProcedure.ts`, `src/discover.ts`,
 
 ## Current slice: release hardening
 
-The actionable plan is [Public preview release plan](docs/release-plan.md).
-Its acceptance criteria are the release gates; previous implementation status
-below does not establish parser correctness on unfamiliar skills.
+The public product is the read-only viewer described in the README. Parser
+limits are in [docs/parser-coverage.md](docs/parser-coverage.md). The checklist
+below is historical implementation status. It does not by itself establish
+parser correctness on unfamiliar skills.
 
 Previous release preparation:
 
