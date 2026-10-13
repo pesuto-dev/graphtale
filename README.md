@@ -1,6 +1,6 @@
 [![CI](https://github.com/pesuto-dev/graphtale/actions/workflows/ci.yml/badge.svg)](https://github.com/pesuto-dev/graphtale/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.90.0-007ACC?logo=visualstudiocode&logoColor=white)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.125.0-007ACC?logo=visualstudiocode&logoColor=white)](https://code.visualstudio.com/)
 
 <p><a href="https://pesuto.dev/">a pesuto tool</a></p>
 
@@ -21,7 +21,7 @@ npm run package
 ```
 
 Or install a `.vsix` from [GitHub Releases](https://github.com/pesuto-dev/graphtale/releases)
-when a release is published. The package targets VS Code `^1.90.0` and compatible
+when a release is published. The package targets VS Code `^1.125.0` and compatible
 Cursor builds. There is no Marketplace or Open VSX listing yet. Graphtale is not
 an npm library: do not `import` it. Details are in [docs/install.md](docs/install.md).
 
