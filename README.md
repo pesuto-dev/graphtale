@@ -13,17 +13,14 @@ execute the skill, and it does not call a backend.
 
 ## Install
 
-Build a local `.vsix` and install it with **Extensions: Install from VSIX...**:
+Install Graphtale from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale).
+You can also download the `.vsix` attached to the
+[GitHub release](https://github.com/pesuto-dev/graphtale/releases) and install it
+with **Extensions: Install from VSIX...**.
 
-```bash
-npm ci
-npm run package
-```
-
-Or install a `.vsix` from [GitHub Releases](https://github.com/pesuto-dev/graphtale/releases)
-when a release is published. The package targets VS Code `^1.125.0` and compatible
-Cursor builds. There is no Marketplace or Open VSX listing yet. Graphtale is not
-an npm library: do not `import` it. Details are in [docs/install.md](docs/install.md).
+The package targets VS Code `^1.125.0` and compatible Cursor builds. A Visual
+Studio Marketplace listing comes later. Graphtale is not an npm library: do not
+`import` it. Details are in [docs/install.md](docs/install.md).
 
 ## Usage
 
@@ -130,8 +127,8 @@ npm run package
 `npm run preview` opens a browser preview of the webview on fixture data. It
 does not load the extension host.
 
-Product direction is in [PLAN.md](PLAN.md). Flow editing is out of scope for
-this release. Release notes are in [CHANGELOG.md](CHANGELOG.md).
+Flow editing is out of scope for this release. Release notes are in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
