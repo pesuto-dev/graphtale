@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Flow diagnosis names a P/N cycle and the edge left out of the graph, a duplicate P/N id and the lines where it appears, an arrow to a missing id with that arrow’s source line, and a self-loop with its source line. Other partial flows still say that some relationships are unresolved.
+- A flow longer than 500 steps warns with the total number of steps and the number shown.
+
 ### Changed
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.
