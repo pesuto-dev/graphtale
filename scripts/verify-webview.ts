@@ -24,6 +24,9 @@ try {
   await page.goto(process.env.PREVIEW_URL ?? "http://127.0.0.1:5194/preview.html?view=flow&compact=1");
   await page.locator('.react-flow__node').first().waitFor();
   await page.waitForTimeout(350);
+  assert.equal(await page.locator('[role="tablist"]').count(), 1);
+  assert.equal(await page.getByRole('tab', { name: 'Flow', exact: true }).getAttribute('aria-selected'), 'true');
+  assert.match(await page.locator('.react-flow__node').first().getAttribute('aria-label') ?? '', /^skill: SKILL\.md$/);
   assert(await page.getByRole('button', { name: 'Show inspector', exact: true }).isVisible());
   const boxes = await page.locator('.react-flow__node').evaluateAll(nodes => nodes.map(node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
   const canvas = await page.locator('.graph').boundingBox();
@@ -33,12 +36,53 @@ try {
   await page.getByRole('button', { name: 'Open instruction', exact: true }).click();
   assert(await page.evaluate(() => ((globalThis as { __previewMessages?: PreviewMessage[] }).__previewMessages ?? []).some((message) => message.type === "openFile" && message.nodeId === "step:1")));
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
-  await page.keyboard.press('Tab');
-  await page.getByRole('button', { name: 'Catalog', exact: true }).focus();
-  const outline = await page.getByRole('button', { name: 'Catalog', exact: true }).evaluate(el => getComputedStyle(el).outlineStyle);
+  const flowTab = page.getByRole('tab', { name: 'Flow', exact: true });
+  await flowTab.focus();
+  await page.keyboard.press('ArrowRight');
+  const catalogTab = page.getByRole('tab', { name: 'Catalog', exact: true });
+  assert.equal(await catalogTab.getAttribute('aria-selected'), 'true');
+  const outline = await catalogTab.evaluate(el => getComputedStyle(el).outlineStyle);
   assert.notEqual(outline, 'none');
-  await page.keyboard.press('Enter');
   assert(await page.locator('.inventory').isVisible());
+  assert.equal(await page.locator('.inventory-row[aria-current="true"]').count(), 1);
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await flowTab.getAttribute('aria-selected'), 'true');
+  await page.locator('.react-flow__node').first().waitFor();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  const visited: string[] = [];
+  let onStep = false;
+  for (let i = 0; i < 12 && !onStep; i++) {
+    await page.keyboard.press('Tab');
+    const place = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) return 'none';
+      if (el.closest('.inspector')) return 'inspector';
+      if (el.closest('.react-flow__edge')) return 'edge';
+      if (el.closest('.react-flow__controls')) return 'controls';
+      if (el.closest('.react-flow__node')) return 'graph';
+      if (el.closest('.toolbar')) return 'toolbar';
+      return 'other';
+    });
+    visited.push(place);
+    onStep = place === 'graph';
+  }
+  assert.equal(onStep, true, `Tab reaches a step before the inspector: ${visited.join(' ')}`);
+  assert.equal(visited.includes('edge'), false);
+  assert.equal(visited.includes('inspector'), false);
+  assert.equal(visited[0], 'toolbar');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Hide inspector', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  onStep = false;
+  for (let i = 0; i < 12 && !onStep; i++) {
+    await page.keyboard.press('Tab');
+    onStep = await page.evaluate(() => !!document.activeElement?.closest('.react-flow__node'));
+  }
+  assert.equal(onStep, true);
+  await page.keyboard.press(' ');
+  await page.getByRole('button', { name: 'Hide inspector', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
   const sample = path.join(root, 'fixtures/release-samples/asset-report');
   const parsed = parseProcedure({ skillRoot: sample, catalog: [] });
   await page.evaluate(message => window.postMessage(message, '*'), { type: 'graph', graph: parseSkill({ skillRoot: sample, catalog: [] }), procedure: parsed.graph, diagnosis: parsed.diagnosis, catalog: [], direction: 'TB' });
@@ -74,7 +118,7 @@ try {
   await page.getByRole('button', { name: 'Inspect files in Catalog', exact: true }).click();
   assert(await page.locator('.inventory').isVisible());
   assert.deepEqual(errors, []);
-  console.log('Passed browser checks: overview bounds, collapse, source/resource messages, keyboard focus, error/retry, light/narrow layout, empty-state Catalog.');
+  console.log('Passed browser checks: overview bounds, collapse, source/resource messages, tablist, catalog current row, compact names, keyboard focus, error/retry, light/narrow layout, empty-state Catalog.');
 } finally { await browser.close(); fs.writeFileSync(previewFile, previous); }
 
 }

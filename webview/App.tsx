@@ -5,8 +5,11 @@ import { diagnosisNeededWhen, diagnosisTitle } from "@shared/protocol";
 import { toFlow } from "./layout";
 import { toCompactFlow } from "./compactLayout";
 import { CatalogInventory } from "./CatalogInventory";
+import { graphNodeIdFromKeyTarget, isGraphActivationKey } from "./graphKeys";
 import { Inspector } from "./Inspector";
 import { Legend } from "./Legend";
+import { ViewTabs } from "./ViewTabs";
+import { viewPanelId, viewTabId } from "./viewTabs";
 import {
   COMPACT_FIT_VIEW_OPTIONS,
   FIT_VIEW_OPTIONS,
@@ -53,22 +56,7 @@ function AppShell() {
             <h1>{state.graph.skillName || "Graphtale"}</h1>
             <span className="status-pill on">viewer</span>
           </div>
-          <div className="view-tabs">
-            <button
-              type="button"
-              className={state.view === "flow" ? "active" : ""}
-              onClick={() => state.switchView("flow")}
-            >
-              Flow
-            </button>
-            <button
-              type="button"
-              className={state.view === "catalog" ? "active" : ""}
-              onClick={() => state.switchView("catalog")}
-            >
-              Catalog
-            </button>
-          </div>
+          <ViewTabs view={state.view} onChange={state.switchView} />
           <p className="hint">
             {state.stale
               ? "Skill files changed in Cursor or VS Code. Refresh to update the graph."
@@ -121,7 +109,12 @@ function AppShell() {
           ) : null}
         </div>
       </header>
-      <div className="main main-procedure">
+      <div
+        className="main main-procedure"
+        role="tabpanel"
+        id={viewPanelId(state.view)}
+        aria-labelledby={viewTabId(state.view)}
+      >
         {state.error ? <div className="error-banner" role="alert"><span>{state.error.message}</span>{state.error.retryable ? <button onClick={() => vscode.postMessage({ type: "refresh" })}>Retry</button> : null}</div> : null}
         <div className="graph-pane">
           {(state.graph.warnings?.length || state.procedure.warnings?.length) ? <details className="read-warnings"><summary>Some files or steps could not be fully read</summary><ul>{[...new Set([...(state.graph.warnings ?? []), ...(state.procedure.warnings ?? [])])].map(warning => <li key={warning}>{warning}</li>)}</ul></details> : null}
@@ -160,11 +153,22 @@ function AppShell() {
             <div className="flow-empty"><p>Review this skill’s files and instructions in Catalog.</p><button onClick={() => state.switchView("catalog")}>Open Catalog</button></div>
           ) : (
             <>
-              <div className="graph" ref={state.graphContainerRef} onKeyDownCapture={event => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                const element = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node");
-                if (element?.dataset.id) { event.preventDefault(); event.stopPropagation(); state.selectNode(element.dataset.id); }
-              }}>
+              <div
+                className="graph"
+                ref={state.graphContainerRef}
+                onKeyDownCapture={(event) => {
+                  if (!isGraphActivationKey(event.key)) {
+                    return;
+                  }
+                  const id = graphNodeIdFromKeyTarget(event.target);
+                  if (!id) {
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  state.selectNode(id);
+                }}
+              >
                 <ReactFlow
                   key={`${state.graph.rootPath}-${state.view}-${state.direction}-${state.compact}-${state.fitNonce}`}
                   nodes={flow.nodes.map((node) => ({
@@ -179,6 +183,8 @@ function AppShell() {
                   onNodeDoubleClick={state.onNodeDoubleClick}
                   nodesDraggable={false}
                   nodesConnectable={false}
+                  nodesFocusable
+                  edgesFocusable={false}
                   elementsSelectable
                   fitView
                   fitViewOptions={state.compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS}

@@ -1,0 +1,177 @@
+:root {
+  --bg: var(--vscode-editor-background, #1e1e1e);
+  --fg: var(--vscode-foreground, #cccccc);
+  --muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --border: var(--vscode-panel-border, #3c3c3c);
+  --fill: var(--vscode-editorWidget-background, #252526);
+  --elevated: var(--vscode-sideBar-background, #252526);
+  --accent: var(--vscode-focusBorder, #007fd4);
+  /* Each kind has its own theme color. Agent no longer shares charts-green
+     with edges, and gate no longer shares charts-blue with reference. */
+  --skill: color-mix(in srgb, var(--vscode-charts-orange, #d18616) 55%, var(--vscode-charts-yellow, #cca700));
+  --agent: color-mix(in srgb, var(--vscode-charts-green, #89d185) 70%, var(--vscode-charts-blue, #75beff));
+  --script: color-mix(in srgb, var(--vscode-charts-red, #f14c4c) 45%, var(--vscode-charts-orange, #d18616));
+  --reference: var(--vscode-charts-blue, #75beff);
+  --gate: var(--vscode-charts-purple, #b180d7);
+  --shared: var(--vscode-disabledForeground, #8a8a8a);
+  --edge: color-mix(in srgb, var(--muted) 65%, var(--bg));
+  --font: var(--vscode-font-family, sans-serif);
+  --mono: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--fill);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+button:hover,
+button.active {
+  border-color: var(--accent);
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34%);
+  height: 100%;
+}
+
+/* Browser preview: more room for the graph, less for the inspector. */
+html.preview-harness .app {
+  grid-template-rows: auto minmax(0, 1fr) minmax(140px, 22%);
+}
+.hint,
+.path,
+.summary {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  min-height: 0;
+}
+
+.main.main-procedure {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Flex (not 3-row grid): diagnosis banner is optional. With
+   `grid-template-rows: auto 1fr auto` and only 2 children, `.graph`
+   landed in the auto row (height 0) and `.legend` ate the 1fr. */
+.graph-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  gap: 0;
+  padding: 10px 10px 0;
+}
+
+.graph {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.graph-pane > .diagnosis-banner,
+.graph-pane > .legend {
+  flex: 0 0 auto;
+}
+.status-pill,
+.stat-pill {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+  background: var(--fill);
+  white-space: nowrap;
+}
+
+.status-pill.on {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.status-pill.wait {
+  color: var(--accent);
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.kind-skill,
+.skill-node.kind-skill {
+  --k: var(--skill);
+}
+
+.kind-agent,
+.skill-node.kind-agent {
+  --k: var(--agent);
+}
+
+.kind-script,
+.skill-node.kind-script {
+  --k: var(--script);
+}
+
+.kind-reference,
+.skill-node.kind-reference {
+  --k: var(--reference);
+}
+
+.kind-gate,
+.skill-node.kind-gate {
+  --k: var(--gate);
+}
+
+.kind-shared,
+.skill-node.kind-shared {
+  --k: var(--shared);
+}
+
+.shape-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  background: var(--k, var(--shared));
+  color: var(--bg);
+}
+
+.shape-mark svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.app.inspector-closed,
+html.preview-harness .app.inspector-closed {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+.main-procedure { display: flex; flex-direction: column; min-height: 0; }
+.graph-pane { flex: 1; min-height: 0; }

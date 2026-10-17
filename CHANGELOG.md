@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Flow and Catalog are a tab list. Arrow keys move between them, and the selected tab exposes `aria-selected`.
+- The selected Catalog row sets `aria-current`.
+- Compact nodes expose their full name, kind plus label, to assistive technology. The visible chip can stay shortened.
+- Keyboard focus runs from the toolbar to the graph steps, then the inspector. Enter or Space selects the focused step without a pointer click. Edges are no longer tab stops.
+
 ### Changed
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.
 - Listing title is “Graphtale – Agent Skill Flow Viewer (SKILL.md)”. The description states the local, read-only SKILL.md flow and names Cursor, Claude Code, and Codex. Category `AI` is added next to `Visualization`. Keywords keep the previous terms and add the listing phrases (skill viewer, skill flow, claude code, codex skills, and related), deduplicated, 23 in total.
 - README header uses the new banner (icon, tagline, agent/skill/reference tags, and “by pesuto”).
 - The activity bar icon is the same three-node graph, drawn in `currentColor` and without the mascot badge.
+- Webview styles are split into tokens, toolbar, nodes, inventory, inspector, and high-contrast stylesheets.
 
 ## [0.1.1] - 2026-10-17
 

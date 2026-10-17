@@ -134,6 +134,7 @@ export function CatalogInventory({
                       <button
                         type="button"
                         className={selected ? "inventory-row is-selected" : "inventory-row"}
+                        aria-current={selected ? "true" : undefined}
                         onClick={() => onSelect(node.id)}
                         onDoubleClick={() => onOpen(node.id)}
                       >

@@ -14,7 +14,7 @@ import {
   styleCompactEdge,
   type Place,
 } from "./compactGeometry";
-import type { SkillFlowNode } from "./SkillNodeView";
+import { compactAccessibleName, type SkillFlowNode } from "./SkillNodeView";
 
 export {
   COMPACT_COL_GAP,
@@ -66,16 +66,19 @@ export function toCompactFlow(
   const flowNodes: SkillFlowNode[] = nodes.map((node) => {
     const placed = places.get(node.id) ?? { x: 0, y: 0, row: 0, col: 0, stacked: false };
     const { sourcePosition, targetPosition } = handlePositions(node.id, placed, edges, places);
+    const accessibleName = compactAccessibleName(node.kind, node.label);
     return {
       id: node.id,
       type: "skill",
       position: { x: placed.x, y: placed.y },
+      ariaLabel: accessibleName,
       data: {
         ...node,
         label: compactDisplayLabel(node),
         direction: "LR",
         expanded: false,
         compact: true,
+        accessibleName,
       },
       sourcePosition,
       targetPosition,

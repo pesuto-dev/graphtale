@@ -1,0 +1,104 @@
+body.vscode-high-contrast .skill-node,
+body.vscode-high-contrast-light .skill-node {
+  background: var(--vscode-editor-background, var(--bg));
+  border-color: var(--vscode-contrastBorder, CanvasText);
+  box-shadow: none;
+  color: var(--vscode-foreground, var(--fg));
+}
+
+body.vscode-high-contrast .skill-node.shape-diamond,
+body.vscode-high-contrast-light .skill-node.shape-diamond {
+  background: var(--vscode-editor-background, var(--bg));
+  border-style: double;
+  border-width: 4px;
+}
+
+body.vscode-high-contrast .skill-node:hover,
+body.vscode-high-contrast .skill-node.is-selected,
+body.vscode-high-contrast-light .skill-node:hover,
+body.vscode-high-contrast-light .skill-node.is-selected {
+  outline: 2px solid var(--vscode-focusBorder, Highlight);
+  outline-offset: 2px;
+  box-shadow: none;
+  transform: none;
+  border-color: var(--vscode-contrastBorder, CanvasText);
+}
+
+body.vscode-high-contrast .skill-node.is-pending,
+body.vscode-high-contrast-light .skill-node.is-pending {
+  opacity: 1;
+  border-style: dashed;
+}
+
+body.vscode-high-contrast .skill-node-meta .tag,
+body.vscode-high-contrast .skill-node-meta .agent-badge,
+body.vscode-high-contrast-light .skill-node-meta .tag,
+body.vscode-high-contrast-light .skill-node-meta .agent-badge {
+  background: transparent;
+  color: var(--vscode-foreground, CanvasText);
+  border: 1px solid var(--vscode-contrastBorder, CanvasText);
+}
+
+@media (forced-colors: active) {
+  .skill-node {
+    background: Canvas;
+    border-color: CanvasText;
+    box-shadow: none;
+    color: CanvasText;
+  }
+
+  .skill-node.shape-diamond {
+    background: Canvas;
+    border-style: double;
+    border-width: 4px;
+  }
+
+  .skill-node:hover,
+  .skill-node.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .skill-node.is-pending {
+    opacity: 1;
+  }
+
+  .shape-mark,
+  .skill-node.is-entry::before {
+    background: CanvasText;
+    color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .skill-node-meta .tag,
+  .skill-node-meta .agent-badge {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-node,
+  .skill-node:hover {
+    transition: none;
+    transform: none;
+  }
+
+  .react-flow__edge.edge-adjacent .react-flow__edge-path,
+  .react-flow__edge.selected .react-flow__edge-path,
+  .react-flow__edge.animated path {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar { flex-wrap: wrap; padding: 8px; }
+  .toolbar-stats .stat { display: none; }
+  .diagnosis-banner { flex-direction: column; max-height: 240px; overflow: auto; }
+  .inspector-head { flex-direction: column; }
+  .app { grid-template-rows: auto minmax(150px, 1fr) minmax(100px, 30%); }
+  .inspector.collapsed .hint { display: none; }
+}
