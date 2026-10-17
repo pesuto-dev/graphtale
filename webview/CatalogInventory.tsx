@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent, type Ref } from "react";
+import { useState, type Ref } from "react";
 import type { SkillNode } from "@shared/protocol";
 import { kindLabel } from "@shared/kind";
+import { CatalogSearch } from "./CatalogSearch";
 import { filterCatalogNodes } from "./findInView";
 import { ShapeMark } from "./ShapeMark";
 
@@ -85,7 +86,6 @@ export function CatalogInventory({
   searchRef?: Ref<HTMLInputElement>;
 }) {
   const [query, setQuery] = useState("");
-  const trimmed = query.trim();
   const filtered = filterCatalogNodes(nodes, query);
   const groups = groupInventory(filtered);
   const counts = {
@@ -120,33 +120,13 @@ export function CatalogInventory({
           </span>
         </div>
       </header>
-      <div className="inventory-search search-field">
-        <label htmlFor="catalog-search">Search files</label>
-        <input
-          id="catalog-search"
-          ref={searchRef}
-          type="search"
-          value={query}
-          placeholder="Name, path, or description"
-          autoComplete="off"
-          spellCheck={false}
-          aria-describedby={trimmed ? "catalog-search-status" : undefined}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-            if (event.key === "Escape" && query) {
-              event.preventDefault();
-              setQuery("");
-            }
-          }}
-        />
-        {trimmed ? (
-          <p id="catalog-search-status" className="inventory-search-status" role="status">
-            {filtered.length === 0
-              ? `No files match "${trimmed}".`
-              : `${filtered.length} of ${nodes.length} files`}
-          </p>
-        ) : null}
-      </div>
+      <CatalogSearch
+        query={query}
+        total={nodes.length}
+        matchCount={filtered.length}
+        inputRef={searchRef}
+        onQuery={setQuery}
+      />
       <div className="inventory-body">
         {nodes.length === 0 ? (
           <p className="inventory-empty">
@@ -154,7 +134,7 @@ export function CatalogInventory({
             <code>SKILL.md</code>.
           </p>
         ) : groups.length === 0 ? (
-          <p className="inventory-empty">No files match &ldquo;{trimmed}&rdquo;.</p>
+          <p className="inventory-empty">No files match &ldquo;{query.trim()}&rdquo;.</p>
         ) : (
           groups.map((group) => (
             <section key={group.id} className="inventory-group">
