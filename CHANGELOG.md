@@ -15,7 +15,7 @@ Maintenance release. No change to Flow, Catalog, diagnosis, or discovery.
 
 - Removed the parked `poc/` notes, the design prototypes `docs/design/moodboard.html` and `docs/design/prototype.html`, and `scripts/sync-user-skills.sh`. The `.gitignore` note for local notes is neutral, and `AGENTS.md` is ordinary developer notes.
 - Split the webview shell, the skill parser, and compact layout into smaller modules. `App.tsx` composes view state, host messages, and edges. `parseSkill` delegates links, paths, and text. `compactLayout` is a facade over filter, columns, and geometry.
-- The release workflow can publish the same VSIX to the Visual Studio Marketplace when the `VSCE_PAT` repository secret is set. A missing token or a Marketplace error does not block Open VSX or the GitHub Release.
+- This release also appears on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pesuto.graphtale). The release workflow publishes the same VSIX there when the `VSCE_PAT` repository secret is set. A missing token or a Marketplace error does not block Open VSX or the GitHub Release.
 
 ## [0.1.0] - 2026-10-13
 

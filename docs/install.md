@@ -1,11 +1,13 @@
 # Install
 
-Install Graphtale from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale).
+Install Graphtale from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pesuto.graphtale).
+In VS Code, open Extensions and search for `graphtale`, or run `code --install-extension pesuto.graphtale`.
 
+Install it from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale) as well.
 Or download the `.vsix` attached to the [GitHub release](https://github.com/pesuto-dev/graphtale/releases)
 and use **Extensions: Install from VSIX...** in Cursor or VS Code. Reload the editor if it asks.
 
-A Visual Studio Marketplace listing comes later. Building a package from a checkout
+Building a package from a checkout
 is covered in the [contributor guide](../CONTRIBUTING.md) (`npm ci && npm run package`).
 Install that `.vsix` the same way.
 
