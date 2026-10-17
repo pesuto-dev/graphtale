@@ -7,10 +7,10 @@ import { buildFixPrompt } from "./shared/protocol";
 import { firstLine } from "./text";
 
 /** Diagnosis phrase for prose headings that do not state an execution order. */
-export const HEADING_HEURISTIC: string = "heuristic: headings, no order";
+export const HEADING_HEURISTIC = "heuristic: headings, no order";
 
 /** Short before/after authors can copy into a real numbered flow. */
-export const HEADING_REWRITE_EXAMPLE: string = [
+export const HEADING_REWRITE_EXAMPLE = [
   "Prose headings are not a procedure. Number the same work to get an ordered flow.",
   "",
   "Before:",
@@ -26,26 +26,33 @@ export const HEADING_REWRITE_EXAMPLE: string = [
   "2. Classify: decide whether this is a bug or a question.",
 ].join("\n");
 
-export type HeadingHit = { title: string; body: string; line: number };
+export interface HeadingHit {
+  title: string;
+  body: string;
+  line: number;
+}
 
-type HeadingParent = { level: number; excluded: boolean };
+interface HeadingParent {
+  level: number;
+  excluded: boolean;
+}
 
-type BuiltHeadingGraph = {
+interface HeadingArgs {
+  skillName: string;
+  skillRoot: string;
+  skillFile: string;
+  skillText: string;
+  candidates: { path: string; text: string }[];
+  warnings: string[];
+}
+
+interface BuiltHeadingGraph {
   skill: HeadingArgs;
   sourcePath: string;
   sourceText: string;
   hits: HeadingHit[];
   warnings: string[];
-};
-
-type HeadingArgs = {
-  skillName: string;
-  skillRoot: string;
-  skillFile: string;
-  skillText: string;
-  candidates: Array<{ path: string; text: string }>;
-  warnings: string[];
-};
+}
 
 /** Level-2 and level-3 headings, in source order, outside excluded sections and fences. */
 export function detectUnorderedHeadings(text: string): HeadingHit[] {
@@ -76,7 +83,7 @@ export function procedureFromHeadings(args: HeadingArgs): ProcedureResult | unde
     if (!hits.length) continue;
     const warnings = [...args.warnings];
     const kept = hits.slice(0, FLOW_MAX_STEPS);
-    if (kept.length < hits.length) warnings.push(`Flow shows ${FLOW_MAX_STEPS} of ${hits.length} steps.`);
+    if (kept.length < hits.length) warnings.push(`Flow shows ${String(FLOW_MAX_STEPS)} of ${String(hits.length)} steps.`);
     const fileName = path.basename(candidate.path);
     return {
       graph: buildGraph({ skill: args, sourcePath: candidate.path, sourceText: candidate.text, hits: kept, warnings }),
@@ -90,7 +97,7 @@ function diagnosisFor(skillName: string, fileName: string, count: number): Proce
   const noun = count === 1 ? "heading" : "headings";
   const detail = [
     `${HEADING_HEURISTIC}.`,
-    `${fileName} has ${count} markdown ${noun} (##/###) and no numbered list or P/N steps.`,
+    `${fileName} has ${String(count)} markdown ${noun} (##/###) and no numbered list or P/N steps.`,
     "Each heading is an unordered step linked to its source line.",
     "No edge between these steps states an execution order.",
   ].join(" ");
@@ -105,7 +112,7 @@ function diagnosisFor(skillName: string, fileName: string, count: number): Proce
 function closeParents(parents: HeadingParent[], level: number): void {
   while (parents.length > 0) {
     const parent = parents[parents.length - 1];
-    if (parent === undefined || parent.level < level) return;
+    if (parent.level < level) return;
     parents.pop();
   }
 }
@@ -113,7 +120,7 @@ function closeParents(parents: HeadingParent[], level: number): void {
 function buildGraph(input: BuiltHeadingGraph): SkillGraph {
   const { skill, sourcePath, sourceText, hits, warnings } = input;
   const steps: SkillNode[] = hits.map((hit, index) => ({
-    id: `step:${index + 1}`,
+    id: `step:${String(index + 1)}`,
     label: hit.title,
     kind: "reference",
     path: sourcePath,

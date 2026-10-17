@@ -9,9 +9,9 @@ export type Detection = {
   sourceKind: "numbered headings" | "numbered list" | "P/N rows";
 };
 const SECTIONS = /^(workflow|first steps|procedure|bootstrap|how it runs|operations|instructions|usage|steps|getting started)(?:\b|$)/i;
-export const EXCLUDED: RegExp = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
+export const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
 const CONDITIONAL = /\b(if|otherwise|unless|parallel|concurrently|alternatively|choose one|one of|go to|skip|repeat|until)\b/i;
-export const HEADING: RegExp = /^(#{1,6})\s+(.+?)\s*#*$/;
+export const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
 const NUMBERED = /^(\d+[a-z]?)\.\s+(.+)$/i;
 
 /** Keep original line offsets; recognize matching fence characters and lengths. */
