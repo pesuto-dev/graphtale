@@ -1,18 +1,14 @@
 # User skills corpus (local test copies)
 
-Copied **from** the machine (not moved). Sources:
+Optional local copies of skill trees. They are gitignored. Nothing in the test
+suite, package scripts, or CI requires them; tests that can read this corpus
+skip it when the folders are absent.
 
-| Bucket | Source | Purpose |
-| --- | --- | --- |
-| `claude/` | `~/.claude/skills/` | Author skills — messy, real shape variation |
-| `agents/` | `~/.agents/skills/` | Marketplace / vendor skills — other conventions |
+| Bucket | Typical contents |
+| --- | --- |
+| `claude/` | Author skills with varied shapes |
+| `agents/` | Vendor-style skills with other conventions |
 
-Regenerate:
+`MANIFEST.json`, when present, is a structural overview (file counts, workflow flags, sample headings).
 
-```bash
-./scripts/sync-user-skills.sh
-```
-
-`MANIFEST.json` is a structural overview (file counts, workflow flags, sample headings).
-
-These copies are for local parser/viewer tests. They are gitignored. Committed fixtures live under `fixtures/demo-skills/`, `fixtures/public-skills/`, and the emptied `fixtures/analyse-ticket` / `fixtures/analyse-ticket-pn` stand-ins.
+Committed fixtures live under `fixtures/demo-skills/`, `fixtures/public-skills/`, and the emptied `fixtures/analyse-ticket` / `fixtures/analyse-ticket-pn` stand-ins.
