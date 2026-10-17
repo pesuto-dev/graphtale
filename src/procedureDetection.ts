@@ -7,6 +7,8 @@ export type Detection = {
   links: DetectedLink[];
   relationships: "explicit" | "unresolved";
   sourceKind: "numbered headings" | "numbered list" | "P/N rows";
+  /** Named reasons a P/N flow is partial. Empty when every drawn edge is explicit. */
+  findings?: string[];
 };
 const SECTIONS = /^(workflow|first steps|procedure|bootstrap|how it runs|operations|instructions|usage|steps|getting started)(?:\b|$)/i;
 const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
@@ -141,7 +143,18 @@ function extractPn(text: string, sourcePath: string): Detection | undefined {
   }
   if (!steps.length) return undefined;
   const links: DetectedLink[] = [];
+  const findings: string[] = [];
   let invalid = false;
+  const linesFor = new Map<string, number[]>();
+  for (const step of steps) {
+    const rows = linesFor.get(step.display) ?? [];
+    rows.push(step.source.startLine);
+    linesFor.set(step.display, rows);
+  }
+  for (const [id, rows] of [...linesFor.entries()].filter(([, rows]) => rows.length > 1).sort((a, b) => a[1][0] - b[1][0] || a[0].localeCompare(b[0]))) {
+    invalid = true;
+    findings.push(`Duplicate step id ${id} on ${formatLines(rows)}.`);
+  }
   const indexFor = (id: string) => steps.map((s, i) => s.display === id ? i : -1).filter(i => i >= 0);
   const reachable = (start: number, target: number, seen = new Set<number>()): boolean => {
     if (start === target) return true;
@@ -149,10 +162,38 @@ function extractPn(text: string, sourcePath: string): Detection | undefined {
     seen.add(start);
     return links.some(link => link.from === start && reachable(link.to, target, seen));
   };
+  const pathFrom = (start: number, target: number): number[] | undefined => {
+    const queue: number[][] = [[start]];
+    const seen = new Set<number>([start]);
+    while (queue.length) {
+      const path = queue.shift();
+      if (!path) break;
+      const node = path[path.length - 1];
+      for (const link of links) {
+        if (link.from !== node || seen.has(link.to)) continue;
+        const next = [...path, link.to];
+        if (link.to === target) return next;
+        seen.add(link.to);
+        queue.push(next);
+      }
+    }
+    return undefined;
+  };
+  const chain = (indexes: number[]) => indexes.map(index => steps[index].display).join("->");
   const addLink = (fromId: string, toId: string, line: number, label?: string) => {
     const from = indexFor(fromId), to = indexFor(toId);
-    if (from.length !== 1 || to.length !== 1 || from[0] === to[0]) { invalid = true; return; }
-    if (reachable(to[0], from[0])) { invalid = true; return; }
+    if (from.length !== 1 || to.length !== 1 || from[0] === to[0]) {
+      invalid = true;
+      if (to.length === 0) findings.push(`Arrow to missing id ${toId} on line ${line}.`);
+      return;
+    }
+    if (reachable(to[0], from[0])) {
+      invalid = true;
+      const path = pathFrom(to[0], from[0]);
+      const cycle = path ? chain([...path, to[0]]) : chain([from[0], to[0]]);
+      findings.push(`Cycle ${cycle}; omitted edge ${chain([from[0], to[0]])}.`);
+      return;
+    }
     if (!links.some(edge => edge.from === from[0] && edge.to === to[0])) {
       links.push({ from: from[0], to: to[0], label, source: { path: sourcePath, startLine: line, endLine: line } });
     }
@@ -252,5 +293,13 @@ function extractPn(text: string, sourcePath: string): Detection | undefined {
     }
   };
   if (links.length) visit(links[0].from);
-  return { steps, links, sourceKind: "P/N rows", relationships: !invalid && covered.size === steps.length ? "explicit" : "unresolved" };
+  return {
+    steps, links, sourceKind: "P/N rows", findings: [...new Set(findings)],
+    relationships: !invalid && covered.size === steps.length ? "explicit" : "unresolved",
+  };
+}
+
+function formatLines(lines: number[]): string {
+  if (lines.length === 2) return `lines ${lines[0]} and ${lines[1]}`;
+  return `lines ${lines.slice(0, -1).join(", ")}, and ${lines[lines.length - 1]}`;
 }

@@ -34,17 +34,23 @@ export function parseProcedure(options: ParseProcedureOptions): ProcedureResult 
   for (const candidate of candidates) {
     const detection = detectSteps(candidate.text, candidate.path);
     if (!detection || detection.steps.length < 1) continue;
+    const notes = [...(detection.findings ?? [])];
     if (detection.steps.length > FLOW_MAX_STEPS) {
+      const total = detection.steps.length;
       detection.steps = detection.steps.slice(0, FLOW_MAX_STEPS);
       detection.links = detection.links.filter(link => link.from < FLOW_MAX_STEPS && link.to < FLOW_MAX_STEPS);
-      warnings.push(`Flow stopped after ${FLOW_MAX_STEPS} steps.`);
+      const warning = `Flow shows ${FLOW_MAX_STEPS} of ${total} steps.`;
+      warnings.push(warning);
+      notes.push(warning);
     }
     const graph = wrapWithSource(buildStepGraph(skillName, skillRoot, detection, homedir), skillFile, skillText);
     graph.warnings = [...new Set(warnings)];
     const confidence = detection.relationships === "explicit" && !warnings.length ? "high" : "partial";
-    const detail = detection.relationships === "explicit"
-      ? "The ordered steps are stated in the source."
-      : "Some relationships are unresolved or only part of the structure is supported.";
+    const detail = notes.length
+      ? notes.join(" ")
+      : detection.relationships === "explicit"
+        ? "The ordered steps are stated in the source."
+        : "Some relationships are unresolved or only part of the structure is supported.";
     return {
       graph,
       diagnosis: {
