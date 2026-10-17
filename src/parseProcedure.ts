@@ -1,13 +1,14 @@
 import * as os from "node:os";
 import * as path from "node:path";
 import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS } from "./fileAccess";
-import { parseFrontmatter } from "./discover";
-import type { CatalogSkill, ProcedureResult, SkillGraph } from "./shared/protocol";
+import { parseFrontmatter } from "./frontmatter";
+import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillGraph } from "./shared/protocol";
 import { emptyDiagnosis } from "./shared/protocol";
 import { flowDiagnosis, limitFlowSteps } from "./procedureDiagnosis";
 import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
+import { frontmatterNeverCloses, stripBom } from "./text";
 
 export interface ParseProcedureOptions { skillRoot: string; catalog: CatalogSkill[]; homedir?: string }
 /** @deprecated use ParseProcedureOptions */
@@ -42,10 +43,11 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
   const readInput = (file: string): string => {
     const result = readTextFile(file, INPUT_READ_LIMIT_BYTES);
     if (result.warning) warnings.push(result.warning);
-    return result.text;
+    return stripBom(result.text);
   };
   const skillText = readInput(skillFile);
   const meta = parseFrontmatter(skillText);
+  if (meta.error) warnings.push(`SKILL.md: ${meta.error}`);
   const homedir = options.homedir ?? os.homedir();
   const workflowPath = findLinkedPath(skillText, skillRoot, homedir, "workflow.md");
   const operationsPath = findLinkedPath(skillText, skillRoot, homedir, "operations.md");
@@ -76,6 +78,7 @@ function procedureCandidates(source: ProcedureCandidateSource): ProcedureCandida
 }
 
 function procedureFromCandidate(loaded: ProcedureLoad, candidate: { path: string; text: string }): ProcedureResult | undefined {
+  noteUnclosed(loaded, candidate);
   const found = detectSteps(candidate.text, candidate.path);
   if (!found || found.steps.length < 1) return undefined;
   const capped = limitFlowSteps(found, FLOW_MAX_STEPS);
@@ -91,25 +94,31 @@ function procedureFromCandidate(loaded: ProcedureLoad, candidate: { path: string
     skillText: loaded.skillText,
     sourceText: candidate.text,
   });
-  graph.warnings = [...new Set(loaded.warnings)];
-  return {
-    graph,
-    diagnosis: flowDiagnosis({
-      detection: capped.detection,
-      sourceName: path.basename(candidate.path),
-      skillName: loaded.skillName,
-      warning: capped.warning,
-      hasWarnings: loaded.warnings.length > 0,
-    }),
-  };
+  return finish(graph, flowDiagnosis({
+    detection: capped.detection,
+    sourceName: path.basename(candidate.path),
+    skillName: loaded.skillName,
+    warning: capped.warning,
+    hasWarnings: loaded.warnings.length > 0,
+  }), loaded.warnings);
+}
+
+function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): void {
+  if (path.resolve(candidate.path) === path.resolve(loaded.skillFile)) return;
+  if (!frontmatterNeverCloses(candidate.text)) return;
+  loaded.warnings.push(`${path.basename(candidate.path)}: Frontmatter is missing its closing ---.`);
 }
 
 function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
   if (!loaded.linked) {
-    return {
-      graph: { skillId: `${loaded.skillName}-procedure`, skillName: loaded.skillName, rootPath: loaded.skillRoot, nodes: [], edges: [], warnings: loaded.warnings },
-      diagnosis: emptyDiagnosis(loaded.skillName),
+    const graph: SkillGraph = {
+      skillId: `${loaded.skillName}-procedure`,
+      skillName: loaded.skillName,
+      rootPath: loaded.skillRoot,
+      nodes: [],
+      edges: [],
     };
+    return finish(graph, emptyDiagnosis(loaded.skillName), loaded.warnings);
   }
   const result = partialResult({
     skillName: loaded.skillName,
@@ -119,8 +128,17 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
     linkedPath: loaded.linked,
     linkedText: readText(loaded.linked),
   });
-  result.graph.warnings = loaded.warnings;
-  return result;
+  return finish(result.graph, result.diagnosis, loaded.warnings);
+}
+
+/** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
+function finish(graph: SkillGraph, diagnosis: ProcedureDiagnosis, warnings: string[]): ProcedureResult {
+  const notes = [...new Set([...(graph.warnings ?? []), ...warnings])];
+  const extra = notes.filter(note => !diagnosis.message.includes(note));
+  const message = extra.length > 0 ? `${diagnosis.message} ${extra.join(" ")}` : diagnosis.message;
+  const fixPrompt = extra.length > 0 ? `${diagnosis.fixPrompt}\n\nAlso observed:\n${extra.join("\n")}` : diagnosis.fixPrompt;
+  const confidence = diagnosis.confidence === "high" && notes.length > 0 ? "partial" : diagnosis.confidence;
+  return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
 }
 
 /** @deprecated Prefer parseProcedure; returns only the graph. */
@@ -129,5 +147,5 @@ export function parsePipeline(options: ParseProcedureOptions): SkillGraph {
 }
 
 function readText(filePath: string): string {
-  return readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text;
+  return stripBom(readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text);
 }

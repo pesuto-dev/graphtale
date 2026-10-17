@@ -1,8 +1,9 @@
+import { maskFrontmatter } from "./text";
+
 export const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
 export const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
-const FRONTMATTER_END = /^(---|\.\.\.)\s*$/;
 
 interface Fence { char: string; length: number; allow: boolean }
 
@@ -14,14 +15,6 @@ export function popParentsAtOrAbove<T extends { level: number }>(parents: T[], l
     parents.pop();
   }
   return parents;
-}
-
-function startsFrontmatter(text: string): boolean {
-  return text.startsWith("---\n") || text.startsWith("---\r\n");
-}
-
-function endsFrontmatter(line: string, index: number): boolean {
-  return index > 0 && FRONTMATTER_END.test(line);
 }
 
 function fenceMatch(line: string): RegExpMatchArray | undefined {
@@ -56,13 +49,8 @@ function fencedLine(delimiter: RegExpMatchArray | undefined, fence: Fence, close
  */
 export function visibleLines(text: string, pn = false): string[] {
   let fence: Fence | undefined;
-  let frontmatter = startsFrontmatter(text);
   let excluded = false;
-  return text.split(/\r?\n/).map((line, index) => {
-    if (frontmatter) {
-      if (endsFrontmatter(line, index)) frontmatter = false;
-      return "";
-    }
+  return maskFrontmatter(text).map((line) => {
     const delimiter = fenceMatch(line);
     if (fence) {
       const hidden = fencedLine(delimiter, fence, () => { fence = undefined; });

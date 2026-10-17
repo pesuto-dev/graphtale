@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README header uses the new banner (icon, tagline, agent/skill/reference tags, and “by pesuto”).
 - The activity bar icon is the same three-node graph, drawn in `currentColor` and without the mascot badge.
 
+### Fixed
+
+- Flow diagnosis reports SKILL.md frontmatter problems that previously stayed silent. A missing closing `---` warns, and the instructions after that block are still read. Invalid YAML is reported with a file line when the parser provides one, without a source excerpt. Frontmatter that is not a mapping, including a single value or a list, warns. A byte-order mark before the frontmatter keeps the skill name, including on CRLF files.
+
 ## [0.1.1] - 2026-10-17
 
 Maintenance release. No change to Flow, Catalog, diagnosis, or discovery.
