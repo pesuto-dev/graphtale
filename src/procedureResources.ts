@@ -32,7 +32,7 @@ function resolveMarkdownLink(resource: string, homedir: string, sourcePath: stri
 }
 
 function resolveNamedAgent(resource: string, skillRoot: string, homedir: string): string | undefined {
-  const agent = resource.match(/\bagent\s+([\w-]+)/i)?.[1];
+  const agent = (/\bagent\s+([\w-]+)/i.exec(resource))?.[1];
   if (!agent) return undefined;
   const candidates = [
     path.join(skillRoot, "agents", `${agent}.md`),
@@ -43,7 +43,7 @@ function resolveNamedAgent(resource: string, skillRoot: string, homedir: string)
 }
 
 function resolveRelativeFile(resource: string, skillRoot: string): string | undefined {
-  const file = resource.match(/(?:scripts|references|prompts)\/[^\s,`]+/)?.[0];
+  const file = (/(?:scripts|references|prompts)\/[^\s,`]+/.exec(resource))?.[0];
   if (!file) return undefined;
   return existingFile(path.resolve(skillRoot, file));
 }

@@ -9,20 +9,22 @@ import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
 
-export type ParseProcedureOptions = { skillRoot: string; catalog: CatalogSkill[]; homedir?: string };
+export interface ParseProcedureOptions { skillRoot: string; catalog: CatalogSkill[]; homedir?: string }
 /** @deprecated use ParseProcedureOptions */
 export type ParsePipelineOptions = ParseProcedureOptions;
 
-type ProcedureLoad = {
+interface ProcedureCandidate { path: string; text: string }
+
+interface ProcedureLoad {
   skillName: string;
   skillRoot: string;
   skillFile: string;
   skillText: string;
   homedir: string;
   warnings: string[];
-  candidates: Array<{ path: string; text: string }>;
+  candidates: ProcedureCandidate[];
   linked?: string;
-};
+}
 
 export function parseProcedure(options: ParseProcedureOptions): ProcedureResult {
   const loaded = loadProcedure(options);
@@ -55,13 +57,15 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
   };
 }
 
-function procedureCandidates(source: {
+interface ProcedureCandidateSource {
   skillFile: string;
   skillText: string;
   workflowPath?: string;
   operationsPath?: string;
   readInput: (file: string) => string;
-}): Array<{ path: string; text: string }> {
+}
+
+function procedureCandidates(source: ProcedureCandidateSource): ProcedureCandidate[] {
   const workflow = source.workflowPath
     ? [{ path: source.workflowPath, text: source.readInput(source.workflowPath) }]
     : [];
@@ -120,7 +124,7 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
 }
 
 /** @deprecated Prefer parseProcedure; returns only the graph. */
-export function parsePipeline(options: ParsePipelineOptions): SkillGraph {
+export function parsePipeline(options: ParseProcedureOptions): SkillGraph {
   return parseProcedure(options).graph;
 }
 

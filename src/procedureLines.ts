@@ -4,15 +4,16 @@ export const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|refe
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const FRONTMATTER_END = /^(---|\.\.\.)\s*$/;
 
-type Fence = { char: string; length: number; allow: boolean };
+interface Fence { char: string; length: number; allow: boolean }
 
 /** Drop enclosing headings whose level is the same or deeper than `level`. */
-export function popParentsAtOrAbove<T extends { level: number }>(parents: T[], level: number): void {
+export function popParentsAtOrAbove<T extends { level: number }>(parents: T[], level: number): T[] {
   while (parents.length > 0) {
-    const parent = parents[parents.length - 1];
-    if (!parent || parent.level < level) return;
+    const parent = parents.at(-1);
+    if (!parent || parent.level < level) return parents;
     parents.pop();
   }
+  return parents;
 }
 
 function startsFrontmatter(text: string): boolean {
@@ -24,13 +25,13 @@ function endsFrontmatter(line: string, index: number): boolean {
 }
 
 function fenceMatch(line: string): RegExpMatchArray | undefined {
-  return line.match(FENCE) ?? undefined;
+  return (FENCE.exec(line)) ?? undefined;
 }
 
 function closesFence(fence: Fence, delimiter: RegExpMatchArray | undefined): boolean {
   const marker = delimiter?.[1];
   if (!delimiter || !marker) return false;
-  return marker[0] === fence.char && marker.length >= fence.length && delimiter[2].trim() === "";
+  return marker.startsWith(fence.char) && marker.length >= fence.length && delimiter[2].trim() === "";
 }
 
 function fenceAllows(info: string, excluded: boolean, pn: boolean): boolean {
@@ -65,9 +66,9 @@ export function visibleLines(text: string, pn = false): string[] {
     const delimiter = fenceMatch(line);
     if (fence) {
       const hidden = fencedLine(delimiter, fence, () => { fence = undefined; });
-      return hidden === undefined ? line : hidden;
+      return hidden ?? line;
     }
-    const heading = line.match(HEADING);
+    const heading = HEADING.exec(line);
     if (heading) excluded = EXCLUDED.test(heading[2]);
     if (!delimiter) return line;
     fence = openFence(delimiter, excluded, pn);

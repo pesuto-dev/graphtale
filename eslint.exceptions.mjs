@@ -77,32 +77,9 @@ export const temporaryExceptions = {
   "src/parseProcedure.test.ts": [
     "max-lines-per-function",
   ],
-  // parseProcedure complexity 15; partialResult 6 params; resolveResource complexity 16.
-  "src/parseProcedure.ts": [
-    "@typescript-eslint/array-type",
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/no-deprecated",
-    "@typescript-eslint/prefer-regexp-exec",
-    "@typescript-eslint/restrict-template-expressions",
-    "complexity",
-    "max-params",
-  ],
   "src/parseSkill.ts": [
     "@typescript-eslint/consistent-type-definitions",
     "@typescript-eslint/restrict-template-expressions",
-  ],
-  // visibleLines callback complexity 14; detectSteps 75 lines, complexity 34;
-  // extractPn 132 lines, complexity 40; nesting 4 and two non-null assertions.
-  "src/procedureDetection.ts": [
-    "@typescript-eslint/array-type",
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/no-non-null-assertion",
-    "@typescript-eslint/prefer-optional-chain",
-    "@typescript-eslint/prefer-regexp-exec",
-    "@typescript-eslint/prefer-string-starts-ends-with",
-    "complexity",
-    "max-depth",
-    "max-lines-per-function",
   ],
   // L46 Forbidden non-null assertion.
   "src/procedureEvidence.test.ts": [

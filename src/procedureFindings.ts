@@ -1,14 +1,14 @@
-export type IndexedStep = { display: string };
-export type IndexedLink = { from: number; to: number };
+export interface IndexedStep { display: string }
+export interface IndexedLink { from: number; to: number }
 
 /** English list of source lines: "lines 3 and 5" or "lines 3, 5, and 8". */
 export function formatLines(lines: number[]): string {
-  if (lines.length === 2) return `lines ${lines[0]} and ${lines[1]}`;
-  return `lines ${lines.slice(0, -1).join(", ")}, and ${lines[lines.length - 1]}`;
+  if (lines.length === 2) return `lines ${String(lines[0])} and ${String(lines[1])}`;
+  return `lines ${lines.slice(0, -1).join(", ")}, and ${String(lines.at(-1))}`;
 }
 
 /** One sentence per display id that appears on more than one P/N row. */
-export function duplicateFindings(steps: Array<{ display: string; line: number }>): string[] {
+export function duplicateFindings(steps: { display: string; line: number }[]): string[] {
   const linesFor = new Map<string, number[]>();
   for (const step of steps) {
     const rows = linesFor.get(step.display) ?? [];
@@ -64,7 +64,7 @@ function extendPath(step: {
 /** Names the cycle an omitted edge would close, then names that edge. */
 export function cycleFinding(steps: IndexedStep[], links: IndexedLink[], from: number, to: number): string {
   const path = pathBetween(links, to, from);
-  const chain = (indexes: number[]) => indexes.map(index => steps[index]?.display ?? "").join("->");
+  const chain = (indexes: number[]): string => indexes.map(index => steps.at(index)?.display ?? "").join("->");
   const cycle = path ? chain([...path, to]) : chain([from, to]);
   return `Cycle ${cycle}; omitted edge ${chain([from, to])}.`;
 }

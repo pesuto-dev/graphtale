@@ -18,8 +18,8 @@ export function buildStepGraph(
     const resource = step.resource ?? step.body;
     const resourcePath = resolve(resource, step.source.path);
     const kind = kindForResource(resource);
-    const baseId = detection.sourceKind === "P/N rows" ? `step:${step.display}` : `step:${index + 1}`;
-    const id = usedIds.has(baseId) ? `${baseId}:${index + 1}` : baseId;
+    const baseId = detection.sourceKind === "P/N rows" ? `step:${step.display}` : `step:${String(index + 1)}`;
+    const id = usedIds.has(baseId) ? `${baseId}:${String(index + 1)}` : baseId;
     usedIds.add(id);
     return {
       id, label: `${step.display}. ${plainTitle(step.title)}`, kind,
@@ -40,18 +40,18 @@ export function buildStepGraph(
   return { skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot, nodes, edges };
 }
 
-export type FlowSource = {
+export interface FlowSource {
   graph: SkillGraph;
   skillFile: string;
   skillText: string;
   sourceText: string;
-};
+}
 
 /** Prefix the flow with the skill file, and with the linked source when that is a different file. */
 export function wrapWithSource(source: FlowSource): SkillGraph {
   const { graph, skillFile, skillText, sourceText } = source;
-  const sourcePath = graph.nodes[0]?.source?.path;
-  if (!sourcePath || !graph.nodes[0]) return graph;
+  const sourcePath = graph.nodes.at(0)?.source?.path;
+  if (!sourcePath) return graph;
   const skillNode = skillMarkdownNode(skillFile, skillText);
   for (const node of graph.nodes) node.isEntry = false;
   if (path.resolve(sourcePath) === path.resolve(skillFile)) return graphWithSkill(graph, skillNode);
@@ -66,7 +66,7 @@ function skillMarkdownNode(skillFile: string, skillText: string): SkillNode {
 }
 
 function graphWithSkill(graph: SkillGraph, skillNode: SkillNode): SkillGraph {
-  const entry = graph.nodes[0];
+  const entry = graph.nodes.at(0);
   if (!entry) return graph;
   return {
     ...graph,
@@ -76,7 +76,7 @@ function graphWithSkill(graph: SkillGraph, skillNode: SkillNode): SkillGraph {
 }
 
 function graphWithLinkedSource(graph: SkillGraph, skillNode: SkillNode, sourcePath: string, sourceText: string): SkillGraph {
-  const entry = graph.nodes[0];
+  const entry = graph.nodes.at(0);
   if (!entry) return graph;
   const sourceNode: SkillNode = {
     id: "procedure-source", label: path.basename(sourcePath), kind: "reference", path: sourcePath,
@@ -97,14 +97,14 @@ function graphWithLinkedSource(graph: SkillGraph, skillNode: SkillNode, sourcePa
   };
 }
 
-export type PartialSource = {
+export interface PartialSource {
   skillName: string;
   skillRoot: string;
   skillFile: string;
   skillText: string;
   linkedPath: string;
   linkedText: string;
-};
+}
 
 /** A linked workflow exists, but it has no supported step structure. */
 export function partialResult(source: PartialSource): ProcedureResult {

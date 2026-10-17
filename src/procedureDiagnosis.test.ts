@@ -7,7 +7,9 @@ import { parseProcedure } from "./parseProcedure";
 import type { ProcedureResult } from "./shared/protocol";
 
 const roots: string[] = [];
-afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
+afterEach(() => {
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
 
 function parseWorkflow(workflow: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "named-diagnosis-"));
@@ -133,10 +135,10 @@ it("warns with the total and the shown count when the flow exceeds 500 steps", (
   expect(FLOW_MAX_STEPS).toBe(500);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "named-diagnosis-cap-"));
   roots.push(root);
-  const steps = Array.from({ length: FLOW_MAX_STEPS + 1 }, (_, index) => `${index + 1}. Step ${index + 1}`).join("\n");
+  const steps = Array.from({ length: FLOW_MAX_STEPS + 1 }, (_, index) => `${String(index + 1)}. Step ${String(index + 1)}`).join("\n");
   fs.writeFileSync(path.join(root, "SKILL.md"), `---\nname: long\ndescription: test\n---\n\n## Instructions\n${steps}\n`);
   const result = parseProcedure({ skillRoot: root, catalog: [], homedir: root });
-  const warning = `Flow shows ${FLOW_MAX_STEPS} of ${FLOW_MAX_STEPS + 1} steps.`;
+  const warning = `Flow shows ${String(FLOW_MAX_STEPS)} of ${String(FLOW_MAX_STEPS + 1)} steps.`;
   const ids = new Set(result.graph.nodes.map(node => node.id));
   expect(result.diagnosis.confidence).toBe("partial");
   expect(result.diagnosis.message).toContain(warning);

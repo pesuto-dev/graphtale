@@ -5,14 +5,14 @@ import { buildFixPrompt } from "./shared/protocol";
 const UNRESOLVED = "Some relationships are unresolved or only part of the structure is supported.";
 const EXPLICIT = "The ordered steps are stated in the source.";
 
-export type CappedDetection = { detection: Detection; warning?: string };
+export interface CappedDetection { detection: Detection; warning?: string }
 
 /** Keep the first `maxSteps` steps and the links that stay inside that prefix. */
 export function limitFlowSteps(detection: Detection, maxSteps: number): CappedDetection {
   if (detection.steps.length <= maxSteps) return { detection };
   const total = detection.steps.length;
   return {
-    warning: `Flow shows ${maxSteps} of ${total} steps.`,
+    warning: `Flow shows ${String(maxSteps)} of ${String(total)} steps.`,
     detection: {
       ...detection,
       steps: detection.steps.slice(0, maxSteps),
@@ -21,13 +21,13 @@ export function limitFlowSteps(detection: Detection, maxSteps: number): CappedDe
   };
 }
 
-export type FlowDiagnosisOptions = {
+export interface FlowDiagnosisOptions {
   detection: Detection;
   sourceName: string;
   skillName: string;
   warning?: string;
   hasWarnings: boolean;
-};
+}
 
 /** Banner copy for one detected flow. Named findings replace the generic sentence. */
 export function flowDiagnosis(options: FlowDiagnosisOptions): ProcedureDiagnosis {
@@ -38,7 +38,7 @@ export function flowDiagnosis(options: FlowDiagnosisOptions): ProcedureDiagnosis
   const shown = options.detection.steps.length;
   return {
     confidence,
-    message: `Flow detected from ${options.sourceName} as ${options.detection.sourceKind} (${shown} steps). ${detail}`,
+    message: `Flow detected from ${options.sourceName} as ${options.detection.sourceKind} (${String(shown)} steps). ${detail}`,
     fixPrompt: buildFixPrompt(options.skillName, detail),
   };
 }

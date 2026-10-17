@@ -1,13 +1,13 @@
-export type DiagramStep = { startLine: number; endLine: number };
+export interface DiagramStep { startLine: number; endLine: number }
 
 type DiagramLink = (from: number, to: number, line: number, label?: string) => void;
 
-type DiagramPass = {
+interface DiagramPass {
   lines: string[];
   steps: DiagramStep[];
   addByIndex: DiagramLink;
   markInvalid: () => void;
-};
+}
 
 function diagramWord(word: string, line: string): boolean {
   return new RegExp(`(?:─.*\\b${word}\\b|\\b${word}\\b.*─)`, "i").test(line);
@@ -20,7 +20,7 @@ export function lineIsDiagramMarker(line: string): boolean {
 
 function stepIndexBefore(steps: DiagramStep[], line: number): number {
   for (let index = steps.length - 1; index >= 0; index -= 1) {
-    const step = steps[index];
+    const step = steps.at(index);
     if (step && step.startLine <= line) return index;
   }
   return -1;
@@ -31,7 +31,7 @@ function stepIndexAfter(steps: DiagramStep[], line: number): number {
 }
 
 function linkParallelBand(pass: DiagramPass, index: number): number[] | undefined {
-  const line = pass.lines[index];
+  const line = pass.lines.at(index);
   if (line === undefined || !diagramWord("parallel", line)) return undefined;
   const barrier = pass.lines.findIndex((row, at) => at > index && diagramWord("barrier", row));
   const from = stepIndexBefore(pass.steps, index + 1);
@@ -53,8 +53,8 @@ function linkParallelBand(pass: DiagramPass, index: number): number[] | undefine
 function linkBypass(pass: DiagramPass, index: number, label: string): void {
   const from = stepIndexBefore(pass.steps, index + 1);
   const to = pass.steps.findIndex(step => {
-    const marker = pass.lines[step.startLine - 1];
-    return step.startLine > index + 1 && marker !== undefined && marker.includes("│");
+    const marker = pass.lines.at(step.startLine - 1);
+    return step.startLine > index + 1 && (marker?.includes("│") ?? false);
   });
   if (to < 0) pass.markInvalid();
   else pass.addByIndex(from, to, index + 1, label);
@@ -62,12 +62,12 @@ function linkBypass(pass: DiagramPass, index: number, label: string): void {
 
 function linkBranchMarker(pass: DiagramPass, index: number): void {
   const line = pass.lines[index] ?? "";
-  const branch = line.match(/^\s*(.+?)\s+↓(?:\s*[│|])?\s*$/);
+  const branch = /^\s*(.+?)\s+↓(?:\s*[│|])?\s*$/.exec(line);
   if (branch?.[1]) {
     const label = branch[1].trim();
     pass.addByIndex(stepIndexBefore(pass.steps, index + 1), stepIndexAfter(pass.steps, index + 1), index + 1, label);
   }
-  const bypass = line.match(/^\s*(.+?)\s+─+.*┐\s*$/);
+  const bypass = /^\s*(.+?)\s+─+.*┐\s*$/.exec(line);
   if (bypass?.[1]) linkBypass(pass, index, bypass[1].trim());
   if (!diagramWord("join", line)) return;
   pass.addByIndex(stepIndexBefore(pass.steps, index + 1), stepIndexAfter(pass.steps, index + 1), index + 1);
@@ -75,8 +75,8 @@ function linkBranchMarker(pass: DiagramPass, index: number): void {
 
 function linkUnmarkedRows(pass: DiagramPass, parallelSteps: ReadonlySet<number>): void {
   for (let index = 0; index + 1 < pass.steps.length; index += 1) {
-    const current = pass.steps[index];
-    const next = pass.steps[index + 1];
+    const current = pass.steps.at(index);
+    const next = pass.steps.at(index + 1);
     if (!current || !next) continue;
     const between = pass.lines.slice(current.endLine, next.startLine - 1);
     const blocked = parallelSteps.has(index) || parallelSteps.has(index + 1) || between.some(lineIsDiagramMarker);
