@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Catalog** search filters the inventory by file name, path, and description. An empty state appears when nothing matches.
 - **Go to step** in Flow finds a step by title or number, centers and selects that node, and opens the inspector. Ctrl or Cmd+F focuses the field.
+- Flow and Catalog are a tab list. Arrow keys move between them, and the selected tab exposes `aria-selected`.
+- The selected Catalog row sets `aria-current`.
+- Compact nodes expose their full name, kind plus label, to assistive technology. The visible chip can stay shortened.
+- Keyboard focus runs from the toolbar to the graph steps, then the inspector. Enter or Space selects the focused step without a pointer click. Edges are no longer tab stops.
+- Flow diagnosis names a P/N cycle and the edge left out of the graph, a duplicate P/N id and the lines where it appears, an arrow to a missing id with that arrow’s source line, and a self-loop with its source line. Other partial flows still say that some relationships are unresolved.
+- A flow longer than 500 steps warns with the total number of steps and the number shown.
 
 ### Changed
 
@@ -18,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Listing title is “Graphtale – Agent Skill Flow Viewer (SKILL.md)”. The description states the local, read-only SKILL.md flow and names Cursor, Claude Code, and Codex. Category `AI` is added next to `Visualization`. Keywords keep the previous terms and add the listing phrases (skill viewer, skill flow, claude code, codex skills, and related), deduplicated, 23 in total.
 - README header uses the new banner (icon, tagline, agent/skill/reference tags, and “by pesuto”).
 - The activity bar icon is the same three-node graph, drawn in `currentColor` and without the mascot badge.
+- Webview styles are split by domain: tokens, toolbar, graph canvas, legend, node card, badges, expand, edges, graph controls, compact nodes, inventory, inspector, and high-contrast.
+
+### Fixed
+
+- Flow diagnosis reports SKILL.md frontmatter problems that previously stayed silent. A missing closing `---` warns, and the instructions after that block are still read. Invalid YAML is reported with a file line when the parser provides one, without a source excerpt. Frontmatter that is not a mapping, including a single value or a list, warns. A byte-order mark before the frontmatter keeps the skill name, including on CRLF files.
 
 ## [0.1.1] - 2026-10-17
 

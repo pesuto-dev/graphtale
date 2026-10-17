@@ -1,0 +1,43 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend .shape-mark {
+  width: 16px;
+  height: 16px;
+}
+
+.legend .shape-mark svg {
+  width: 10px;
+  height: 10px;
+}
+
+.legend-line {
+  width: 22px;
+  height: 0;
+  border-top: 2px solid var(--edge);
+  border-radius: 999px;
+}
+
+.legend-line.dashed {
+  border-top-style: dashed;
+  border-top-color: var(--muted);
+}
+
+.legend-line.adjacent {
+  border-top-style: dashed;
+  border-top-color: var(--accent);
+}

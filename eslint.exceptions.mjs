@@ -3,8 +3,8 @@
  *
  * TODO(coding-standards): remove a file after it satisfies every listed rule.
  * New files do not belong here. Do not add eslint-disable comments in source.
- * The module split that retires these entries is a follow-up PR. Landing it
- * here would rewrite the same files as open PRs #11, #12, #13, #15, and #16.
+ * Entries below are files this branch does not split. Drop a rule once the
+ * file satisfies it.
  *
  * @type {Record<string, string[]>}
  */
@@ -18,13 +18,6 @@ export const temporaryExceptions = {
   ],
   "scripts/generate-preview-data.ts": [
     "@typescript-eslint/restrict-template-expressions",
-  ],
-  // L10 Async function 'main' has too many lines (70). Maximum allowed is 60.
-  "scripts/verify-webview.ts": [
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/no-confusing-void-expression",
-    "@typescript-eslint/use-unknown-in-catch-callback-variable",
-    "max-lines-per-function",
   ],
   // L34 Arrow function has too many lines (96). Maximum allowed is 60.
   "src/discover.test.ts": [
@@ -77,32 +70,9 @@ export const temporaryExceptions = {
   "src/parseProcedure.test.ts": [
     "max-lines-per-function",
   ],
-  // parseProcedure complexity 15; partialResult 6 params; resolveResource complexity 16.
-  "src/parseProcedure.ts": [
-    "@typescript-eslint/array-type",
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/no-deprecated",
-    "@typescript-eslint/prefer-regexp-exec",
-    "@typescript-eslint/restrict-template-expressions",
-    "complexity",
-    "max-params",
-  ],
   "src/parseSkill.ts": [
     "@typescript-eslint/consistent-type-definitions",
     "@typescript-eslint/restrict-template-expressions",
-  ],
-  // visibleLines callback complexity 14; detectSteps 75 lines, complexity 34;
-  // extractPn 132 lines, complexity 40; nesting 4 and two non-null assertions.
-  "src/procedureDetection.ts": [
-    "@typescript-eslint/array-type",
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/no-non-null-assertion",
-    "@typescript-eslint/prefer-optional-chain",
-    "@typescript-eslint/prefer-regexp-exec",
-    "@typescript-eslint/prefer-string-starts-ends-with",
-    "complexity",
-    "max-depth",
-    "max-lines-per-function",
   ],
   // L46 Forbidden non-null assertion.
   "src/procedureEvidence.test.ts": [
@@ -146,21 +116,6 @@ export const temporaryExceptions = {
   "vite.config.ts": [
     "@typescript-eslint/no-deprecated",
   ],
-  // L22 Missing return type on function. L30 Function 'AppShell' has too many lines (180). Maximum allowed is 60. L30 Function 'AppShell' has a complexity of 43. Maximum allowed is 10.
-  "webview/App.tsx": [
-    "@typescript-eslint/explicit-module-boundary-types",
-    "@typescript-eslint/no-confusing-void-expression",
-    "@typescript-eslint/restrict-template-expressions",
-    "complexity",
-    "max-lines-per-function",
-  ],
-  // L72 Function 'CatalogInventory' has too many lines (90). Maximum allowed is 60. L72 Missing return type on function.
-  "webview/CatalogInventory.tsx": [
-    "@typescript-eslint/consistent-type-definitions",
-    "@typescript-eslint/explicit-module-boundary-types",
-    "@typescript-eslint/no-confusing-void-expression",
-    "max-lines-per-function",
-  ],
   // L9 Function 'roundedWrapPath' has too many parameters (7). Maximum allowed is 4. L60 Missing return type on function.
   "webview/CompactWrapEdge.tsx": [
     "@typescript-eslint/consistent-type-definitions",
@@ -183,12 +138,6 @@ export const temporaryExceptions = {
   // L5 Function 'KindIcon' has too many lines (64). Maximum allowed is 60. L71 Missing return type on function.
   "webview/ShapeMark.tsx": [
     "@typescript-eslint/explicit-module-boundary-types",
-    "max-lines-per-function",
-  ],
-  // L29 Function 'SkillNodeView' has too many lines (97). Maximum allowed is 60. L29 Function 'SkillNodeView' has a complexity of 19. Maximum allowed is 10. L29 Missing return type on function.
-  "webview/SkillNodeView.tsx": [
-    "@typescript-eslint/explicit-module-boundary-types",
-    "complexity",
     "max-lines-per-function",
   ],
   // L19 Arrow function has too many lines (153). Maximum allowed is 60.
@@ -238,14 +187,6 @@ export const temporaryExceptions = {
     "complexity",
     "max-lines-per-function",
     "react-hooks/exhaustive-deps",
-  ],
-  // L23 Function 'useViewState' has too many lines (166). Maximum allowed is 60. L23 Missing return type on function.
-  "webview/useViewState.ts": [
-    "@typescript-eslint/explicit-module-boundary-types",
-    "@typescript-eslint/no-confusing-void-expression",
-    "@typescript-eslint/no-unnecessary-condition",
-    "@typescript-eslint/no-unnecessary-type-assertion",
-    "max-lines-per-function",
   ],
   "webview/vscode.ts": [
     "@typescript-eslint/consistent-type-definitions",
