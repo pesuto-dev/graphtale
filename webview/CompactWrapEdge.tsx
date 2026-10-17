@@ -72,5 +72,12 @@ export function CompactWrapEdge({
   const gutterX = meta?.gutterX ?? Math.min(sourceX, targetX) - 24;
   const enter = meta?.enter ?? "top";
   const path = roundedWrapPath(sourceX, sourceY, targetX, targetY, wrapY, gutterX, enter);
-  return <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />;
+  return (
+    <BaseEdge
+      id={id}
+      path={path}
+      style={{ strokeLinecap: "round", strokeLinejoin: "round", ...style }}
+      markerEnd={markerEnd}
+    />
+  );
 }

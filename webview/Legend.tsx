@@ -28,6 +28,10 @@ export function Legend({
         <span className="legend-line dashed" />
         {showProcedureHints ? "inferred / unresolved" : "inferred"}
       </span>
+      <span className="legend-item">
+        <span className="legend-line adjacent" />
+        selected path
+      </span>
     </div>
   );
 }

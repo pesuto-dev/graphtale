@@ -5,6 +5,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  type Edge,
   type NodeMouseHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -34,6 +35,39 @@ import { vscode } from "./vscode";
 
 const nodeTypes = { skill: SkillNodeView };
 const edgeTypes = { compactWrap: CompactWrapEdge };
+
+/** Rounded smoothstep for Flow edges. Compact edges keep their own type and path options. */
+const defaultEdgeOptions = {
+  type: "smoothstep" as const,
+  pathOptions: { borderRadius: 16 },
+};
+
+function presentEdges(edges: Edge[], selectedId: string | undefined): Edge[] {
+  return edges.map((edge) => {
+    const compact = edge.className?.includes("edge-compact") ?? false;
+    const adjacent =
+      selectedId !== undefined && (edge.source === selectedId || edge.target === selectedId);
+    const markerEnd = edge.markerEnd;
+    return {
+      ...edge,
+      className: adjacent ? `${edge.className ?? ""} edge-adjacent`.trim() : edge.className,
+      style: {
+        ...(edge.style ?? {}),
+        strokeWidth: adjacent ? (compact ? 3 : 2.5) : compact ? edge.style?.strokeWidth : 2,
+        ...(adjacent
+          ? {
+              stroke: "var(--accent)",
+              strokeDasharray: "6 6",
+            }
+          : {}),
+      },
+      markerEnd:
+        adjacent && markerEnd && typeof markerEnd === "object"
+          ? { ...markerEnd, color: "var(--accent)" }
+          : markerEnd,
+    };
+  });
+}
 
 const emptyGraph: SkillGraph = {
   skillId: "",
@@ -447,9 +481,10 @@ function AppShell() {
                     ...node,
                     selected: node.id === selectedId,
                   }))}
-                  edges={flow.edges}
+                  edges={presentEdges(flow.edges, selectedId)}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
+                  defaultEdgeOptions={defaultEdgeOptions}
                   onNodeClick={onNodeClick}
                   onNodeDoubleClick={onNodeDoubleClick}
                   nodesDraggable={false}
