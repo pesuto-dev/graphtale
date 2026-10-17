@@ -161,6 +161,12 @@ export function useViewState() {
     setDirection(next);
   }
 
+  function toggleCompact(): void {
+    setCompact((value) => !value);
+    setExpandedIds([]);
+    setFitNonce((nonce) => nonce + 1);
+  }
+
   return {
     graph,
     setGraph,
@@ -202,5 +208,6 @@ export function useViewState() {
     onNodeClick,
     onNodeDoubleClick,
     toggleDirection,
+    toggleCompact,
   };
 }
