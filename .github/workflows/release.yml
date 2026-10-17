@@ -1,0 +1,81 @@
+# Builds the VSIX for a v* tag, publishes it to Open VSX, and attaches it
+# to the GitHub Release. The pesuto namespace already exists; this workflow
+# does not create it. Set repository secret OVSX_PAT before pushing the tag.
+# Marketplace publish is intentionally absent.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Require Open VSX token
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "${OVSX_PAT}" ]; then
+            echo "::error::OVSX_PAT is missing. Add the Open VSX personal access token as a repository secret named OVSX_PAT, then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check tag matches package version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "${tag}" != "${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version}."
+            exit 1
+          fi
+
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Resolve VSIX path
+        id: vsix
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(graphtale-*.vsix)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one graphtale-*.vsix file, found ${#files[@]}."
+            exit 1
+          fi
+          echo "path=${files[0]}" >> "${GITHUB_OUTPUT}"
+          echo "Packaged: ${files[0]}"
+
+      # If this step succeeds and the GitHub Release step fails, do not publish
+      # the same version to Open VSX again. Attach the existing VSIX instead.
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx@1.3.0 publish "${{ steps.vsix.outputs.path }}" -p "${OVSX_PAT}"
+
+      - name: Attach VSIX to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${{ steps.vsix.outputs.path }}" \
+            --title "Graphtale ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --verify-tag
