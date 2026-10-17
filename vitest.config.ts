@@ -8,6 +8,6 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts", "webview/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "webview/**/*.test.ts", "scripts/**/*.test.ts"],
   },
 });
