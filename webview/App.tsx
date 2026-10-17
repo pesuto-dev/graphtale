@@ -8,8 +8,7 @@ import { CatalogInventory } from "./CatalogInventory";
 import { graphNodeIdFromKeyTarget, isGraphActivationKey } from "./graphKeys";
 import { Inspector } from "./Inspector";
 import { Legend } from "./Legend";
-import { ViewTabs } from "./ViewTabs";
-import { viewPanelId, viewTabId } from "./viewTabs";
+import { ViewTabs, viewPanelId, viewTabId } from "./ViewTabs";
 import {
   COMPACT_FIT_VIEW_OPTIONS,
   FIT_VIEW_OPTIONS,

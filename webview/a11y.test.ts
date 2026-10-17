@@ -12,8 +12,7 @@ import { toCompactFlow } from "./compactLayout";
 import { node } from "./compactTestHelpers";
 import { graphNodeIdFromKeyTarget, isGraphActivationKey } from "./graphKeys";
 import { SkillNodeView, compactAccessibleName, type SkillFlowNode } from "./SkillNodeView";
-import { ViewTabs } from "./ViewTabs";
-import { nextViewFromKey, viewTabId } from "./viewTabs";
+import { nextViewFromKey, viewTabId, ViewTabs } from "./ViewTabs";
 
 let root: Root | undefined;
 
