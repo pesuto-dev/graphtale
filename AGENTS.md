@@ -9,9 +9,12 @@ This repo is a Cursor and VS Code extension (Graphtale, package name `graphtale`
 
 Shared types live in `src/shared/protocol.ts` and are aliased as `@shared` in the webview.
 
+Coding standards for TypeScript, React, and CSS live in [docs/coding-standards.md](docs/coding-standards.md). Follow them for new code. Hard limits are `npm run lint`, `npm run lint:css`, and `npm run check:sizes`. Existing misses are listed in `eslint.exceptions.mjs` and `scripts/check-file-sizes.mjs` with a TODO. Do not add `eslint-disable` in source, and do not move files into the target folders (`src/parser/`, `src/host/`, `webview/components/`, `webview/hooks/`, `webview/lib/`, `webview/styles/`) until that split lands. Until then, put a new file next to the module it extends.
+
 ### Commands
 
 - Install: `npm install`
+- Lint: `npm run lint` (ESLint), `npm run lint:css` (stylelint), `npm run check:sizes` (file size)
 - Type-check (host + webview): `npm run check`
 - Tests: `npm test` (vitest, `src/**/*.test.ts` and `webview/**/*.test.ts`)
 - Validate skill fixtures: `npm run validate`
