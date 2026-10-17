@@ -1,92 +1,15 @@
-import type { ReactElement } from "react";
+import type { ReactElement, Ref } from "react";
 import type { SkillNode } from "@shared/protocol";
 import { kindLabel } from "@shared/kind";
+import { CatalogSearch } from "./CatalogSearch";
+import { inventoryCounts, type InventoryGroup } from "./inventoryGroups";
 import { ShapeMark } from "./ShapeMark";
+import { useCatalogSearch } from "./useCatalogSearch";
 
-export type InventoryGroupId = "entry" | "agents" | "scripts" | "references" | "handoffs" | "other";
+export type { InventoryCounts, InventoryGroup, InventoryGroupId } from "./inventoryGroups";
+export { groupInventory, inventoryCounts } from "./inventoryGroups";
 
-export interface InventoryGroup {
-  id: InventoryGroupId;
-  title: string;
-  nodes: SkillNode[];
-}
-
-function groupIdFor(node: SkillNode): InventoryGroupId {
-  if (node.isEntry || node.id === "skill-md") {
-    return "entry";
-  }
-  switch (node.kind) {
-    case "agent":
-      return "agents";
-    case "script":
-      return "scripts";
-    case "reference":
-    case "shared":
-      return "references";
-    case "skill":
-      return "handoffs";
-    case "gate":
-      return "other";
-    default: {
-      const _exhaustive: never = node.kind;
-      return _exhaustive;
-    }
-  }
-}
-
-const ORDER: InventoryGroupId[] = [
-  "entry",
-  "agents",
-  "scripts",
-  "references",
-  "handoffs",
-  "other",
-];
-
-const TITLES: Record<InventoryGroupId, string> = {
-  entry: "Entry",
-  agents: "Agents",
-  scripts: "Scripts",
-  references: "References & schemas",
-  handoffs: "Handoffs",
-  other: "Other",
-};
-
-export function groupInventory(nodes: SkillNode[]): InventoryGroup[] {
-  const buckets = new Map<InventoryGroupId, SkillNode[]>();
-  for (const id of ORDER) {
-    buckets.set(id, []);
-  }
-  for (const node of nodes) {
-    buckets.get(groupIdFor(node))?.push(node);
-  }
-  for (const list of buckets.values()) {
-    list.sort((a, b) => a.label.localeCompare(b.label));
-  }
-  return ORDER.map((id) => ({
-    id,
-    title: TITLES[id],
-    nodes: buckets.get(id) ?? [],
-  })).filter((group) => group.nodes.length > 0);
-}
-
-export interface InventoryCounts {
-  agents: number;
-  scripts: number;
-  references: number;
-  handoffs: number;
-}
-
-export function inventoryCounts(nodes: SkillNode[]): InventoryCounts {
-  return {
-    agents: nodes.filter((item) => item.kind === "agent").length,
-    scripts: nodes.filter((item) => item.kind === "script").length,
-    references: nodes.filter((item) => item.kind === "reference" || item.kind === "shared").length,
-    handoffs: nodes.filter((item) => item.kind === "skill" && !item.isEntry && item.id !== "skill-md").length,
-  };
-}
-
-function InventoryStats({ counts }: { counts: InventoryCounts }): ReactElement {
+function InventoryStats({ counts }: { counts: ReturnType<typeof inventoryCounts> }): ReactElement {
   return (
     <div className="inventory-stats">
       <span className="stat"><strong>{counts.agents}</strong>agents</span>
@@ -188,36 +111,77 @@ function InventoryHeader({ nodes }: { nodes: SkillNode[] }): ReactElement {
   );
 }
 
+function NoMatch({ query }: { query: string }): ReactElement {
+  return <p className="inventory-empty">No files match &ldquo;{query.trim()}&rdquo;.</p>;
+}
+
+interface InventoryBodyProps {
+  total: number;
+  query: string;
+  groups: InventoryGroup[];
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+  onOpen: (nodeId: string) => void;
+}
+
+function InventoryBody(props: InventoryBodyProps): ReactElement {
+  let body: ReactElement;
+  if (props.total === 0) {
+    body = <InventoryEmpty />;
+  } else if (props.groups.length === 0) {
+    body = <NoMatch query={props.query} />;
+  } else {
+    body = (
+      <>
+        {props.groups.map((group) => (
+          <InventoryGroupSection
+            key={group.id}
+            group={group}
+            selectedId={props.selectedId}
+            onSelect={props.onSelect}
+            onOpen={props.onOpen}
+          />
+        ))}
+      </>
+    );
+  }
+  return <div className="inventory-body">{body}</div>;
+}
+
+export interface CatalogInventoryProps {
+  nodes: SkillNode[];
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+  onOpen: (nodeId: string) => void;
+  searchRef?: Ref<HTMLInputElement>;
+}
+
 export function CatalogInventory({
   nodes,
   selectedId,
   onSelect,
   onOpen,
-}: {
-  nodes: SkillNode[];
-  selectedId: string | undefined;
-  onSelect: (id: string) => void;
-  onOpen: (nodeId: string) => void;
-}): ReactElement {
-  const groups = groupInventory(nodes);
+  searchRef,
+}: CatalogInventoryProps): ReactElement {
+  const search = useCatalogSearch(nodes);
   return (
     <div className="inventory">
       <InventoryHeader nodes={nodes} />
-      <div className="inventory-body">
-        {groups.length === 0 ? (
-          <InventoryEmpty />
-        ) : (
-          groups.map((group) => (
-            <InventoryGroupSection
-              key={group.id}
-              group={group}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onOpen={onOpen}
-            />
-          ))
-        )}
-      </div>
+      <CatalogSearch
+        query={search.query}
+        status={search.status}
+        inputRef={searchRef}
+        onQuery={search.onQuery}
+        onKeyDown={search.onKeyDown}
+      />
+      <InventoryBody
+        total={nodes.length}
+        query={search.query}
+        groups={search.groups}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        onOpen={onOpen}
+      />
     </div>
   );
 }

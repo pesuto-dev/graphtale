@@ -11,9 +11,11 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 8px 10px 12px;
   border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 
 .inventory-head h2 {

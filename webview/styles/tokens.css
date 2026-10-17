@@ -53,6 +53,11 @@ button.active {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34%);
   height: 100%;
+  min-width: 0;
+}
+
+.app > * {
+  min-width: 0;
 }
 
 /* Browser preview: more room for the graph, less for the inspector. */

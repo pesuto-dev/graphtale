@@ -1,6 +1,8 @@
-import type { ReactElement } from "react";
-import type { GraphView, LayoutDirection } from "@shared/protocol";
+import type { ReactElement, Ref } from "react";
+import type { GraphView, LayoutDirection, SkillNode } from "@shared/protocol";
 import type { AppViewModel } from "./appModel";
+import { GoToStep } from "./GoToStep";
+import { nodesPresentOnFlow } from "./stepMatch";
 import type { ViewState } from "./useViewState";
 import { ViewTabs } from "./ViewTabs";
 
@@ -19,6 +21,9 @@ export interface AppToolbarProps {
   onToggleCompact: () => void;
   onToggleDirection: () => void;
   onRefresh: () => void;
+  stepNodes: SkillNode[];
+  onGoToStep: (id: string) => void;
+  stepSearchRef: Ref<HTMLInputElement>;
 }
 
 function countLabel(view: GraphView, compact: boolean): string {
@@ -72,9 +77,17 @@ function DirectionButton(props: AppToolbarProps): ReactElement | null {
   );
 }
 
+function StepSearch(props: AppToolbarProps): ReactElement | null {
+  if (props.view !== "flow" || props.stepNodes.length === 0) {
+    return null;
+  }
+  return <GoToStep nodes={props.stepNodes} onGo={props.onGoToStep} inputRef={props.stepSearchRef} />;
+}
+
 function ToolbarStats(props: AppToolbarProps): ReactElement {
   return (
     <div className="toolbar-stats">
+      <StepSearch {...props} />
       <span className="stat">
         <strong>{props.inventoryCount}</strong>
         {countLabel(props.view, props.compact)}
@@ -97,8 +110,9 @@ export function toolbarProps(input: {
   state: ViewState;
   model: AppViewModel;
   onRefresh: () => void;
+  stepSearchRef: Ref<HTMLInputElement>;
 }): AppToolbarProps {
-  const { state, model, onRefresh } = input;
+  const { state, model, onRefresh, stepSearchRef } = input;
   return {
     skillName: state.graph.skillName,
     view: state.view,
@@ -114,6 +128,9 @@ export function toolbarProps(input: {
     onToggleCompact: state.toggleCompact,
     onToggleDirection: state.toggleDirection,
     onRefresh,
+    stepNodes: nodesPresentOnFlow(model.display.nodes, model.flow.nodes),
+    onGoToStep: state.goToNode,
+    stepSearchRef,
   };
 }
 
