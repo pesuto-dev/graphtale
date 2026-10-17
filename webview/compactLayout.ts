@@ -276,7 +276,7 @@ function styleCompactEdge(
     ? "var(--accent)"
     : low
       ? "color-mix(in srgb, var(--muted) 30%, var(--fg))"
-      : "color-mix(in srgb, var(--edge) 55%, #ffffff)";
+      : "color-mix(in srgb, var(--edge) 45%, var(--fg))";
 
   const wrap = Boolean(from && to && to.row > from.row);
   const longWrap = Boolean(from && to && isLongWrap(from, to));

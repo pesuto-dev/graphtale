@@ -12,6 +12,20 @@ export type SkillNodeData = SkillNode & {
 
 export type SkillFlowNode = Node<SkillNodeData, "skill">;
 
+function NodeMeta({ data }: { data: SkillNodeData }) {
+  if (data.kind === "agent") {
+    return <span className="agent-badge">agent</span>;
+  }
+  return (
+    <>
+      <span className="tag">{kindLabel(data.kind)}</span>
+      {data.uses.length > 0 ? <span className="tag">{data.uses.length} uses</span> : null}
+      {data.isBlock ? <span className="tag">block</span> : null}
+      {data.pending ? <span className="tag">pending</span> : null}
+    </>
+  );
+}
+
 export function SkillNodeView({
   data,
   selected,
@@ -88,16 +102,7 @@ export function SkillNodeView({
           ) : null}
         </div>
         <div className="skill-node-meta">
-          {data.kind === "agent" ? (
-            <span className="agent-badge">agent</span>
-          ) : (
-            <>
-              {kindLabel(data.kind)}
-              {data.uses.length > 0 ? ` · ${data.uses.length} uses` : ""}
-              {data.isBlock ? " · block" : ""}
-              {data.pending ? " · pending" : ""}
-            </>
-          )}
+          <NodeMeta data={data} />
         </div>
       </div>
       {data.expanded ? (

@@ -6,14 +6,15 @@
   --fill: var(--vscode-editorWidget-background, #252526);
   --elevated: var(--vscode-sideBar-background, #252526);
   --accent: var(--vscode-focusBorder, #007fd4);
-  --edge: var(--vscode-charts-green, #89d185);
-  --skill: var(--vscode-charts-yellow, #cca700);
-  /* Teal — distinct from script orange (they previously shared one color). */
-  --agent: var(--vscode-charts-green, #3dc9a5);
+  /* Each kind has its own theme color. Agent no longer shares charts-green
+     with edges, and gate no longer shares charts-blue with reference. */
+  --skill: color-mix(in srgb, var(--vscode-charts-orange, #d18616) 55%, var(--vscode-charts-yellow, #cca700));
+  --agent: color-mix(in srgb, var(--vscode-charts-green, #89d185) 70%, var(--vscode-charts-blue, #75beff));
+  --script: color-mix(in srgb, var(--vscode-charts-red, #f14c4c) 45%, var(--vscode-charts-orange, #d18616));
   --reference: var(--vscode-charts-blue, #75beff);
-  --script: var(--vscode-charts-orange, #d18616);
+  --gate: var(--vscode-charts-purple, #b180d7);
   --shared: var(--vscode-disabledForeground, #8a8a8a);
-  --gate: var(--vscode-charts-blue, #75beff);
+  --edge: color-mix(in srgb, var(--muted) 65%, var(--bg));
   --font: var(--vscode-font-family, sans-serif);
   --mono: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
@@ -360,6 +361,16 @@ html.preview-harness .app {
   color: var(--muted);
 }
 
+.inventory .shape-mark {
+  width: 18px;
+  height: 18px;
+}
+
+.inventory .shape-mark svg {
+  width: 11px;
+  height: 11px;
+}
+
 .inventory-summary {
   font-size: 12px;
   color: var(--muted);
@@ -368,7 +379,7 @@ html.preview-harness .app {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding-left: 18px;
+  padding-left: 26px;
 }
 
 .inventory-path {
@@ -376,7 +387,7 @@ html.preview-harness .app {
   font-size: 10px;
   color: var(--muted);
   opacity: 0.85;
-  padding-left: 18px;
+  padding-left: 26px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -397,8 +408,23 @@ html.preview-harness .app {
 .react-flow__node.rf-compact .skill-node.shape-hex {
   min-width: 0;
   border-width: 1.5px;
-  box-shadow: inset 2px 0 0 var(--agent);
-  background: color-mix(in srgb, var(--agent) 12%, var(--fill));
+}
+
+.react-flow__node.rf-compact .shape-mark {
+  width: 18px;
+  height: 18px;
+}
+
+.react-flow__node.rf-compact .shape-mark svg {
+  width: 11px;
+  height: 11px;
+}
+
+.react-flow__node.rf-compact .skill-node.is-entry::before {
+  top: -8px;
+  left: 8px;
+  font-size: 8px;
+  padding: 0 5px;
 }
 
 .react-flow__node.rf-compact .skill-node-body-compact {
@@ -428,8 +454,12 @@ html.preview-harness .app {
   opacity: 0.35;
 }
 
+.react-flow__node.rf-compact .skill-node.shape-rect {
+  border-radius: 6px;
+}
+
 .react-flow__node.rf-compact .skill-node.shape-diamond {
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  border-radius: 8px;
 }
 
 .graph .react-flow {
@@ -587,10 +617,21 @@ button.chip:disabled {
   gap: 6px;
 }
 
+.legend .shape-mark {
+  width: 16px;
+  height: 16px;
+}
+
+.legend .shape-mark svg {
+  width: 10px;
+  height: 10px;
+}
+
 .legend-line {
-  width: 18px;
+  width: 22px;
   height: 0;
   border-top: 2px solid var(--edge);
+  border-radius: 999px;
 }
 
 .legend-line.dashed {
@@ -598,72 +639,79 @@ button.chip:disabled {
   border-top-color: var(--muted);
 }
 
+.legend-line.adjacent {
+  border-top-style: dashed;
+  border-top-color: var(--accent);
+}
+
+.kind-skill,
+.skill-node.kind-skill {
+  --k: var(--skill);
+}
+
+.kind-agent,
+.skill-node.kind-agent {
+  --k: var(--agent);
+}
+
+.kind-script,
+.skill-node.kind-script {
+  --k: var(--script);
+}
+
+.kind-reference,
+.skill-node.kind-reference {
+  --k: var(--reference);
+}
+
+.kind-gate,
+.skill-node.kind-gate {
+  --k: var(--gate);
+}
+
+.kind-shared,
+.skill-node.kind-shared {
+  --k: var(--shared);
+}
+
 .shape-mark {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   flex-shrink: 0;
-  background: currentColor;
+  display: inline-grid;
+  place-items: center;
+  background: var(--k, var(--shared));
+  color: var(--bg);
 }
 
-.shape-mark.shape-pill {
-  width: 16px;
-  height: 8px;
-  border-radius: 99px;
-}
-
-.shape-mark.shape-rect {
-  width: 12px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.shape-mark.shape-hex {
-  width: 12px;
-  height: 11px;
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
-  border-radius: 0;
-}
-
-.shape-mark.shape-diamond {
-  width: 10px;
-  height: 10px;
-  transform: rotate(45deg);
-}
-
-.shape-mark.kind-skill {
-  color: var(--skill);
-}
-
-.shape-mark.kind-agent {
-  color: var(--agent);
-}
-
-.shape-mark.kind-script {
-  color: var(--script);
-}
-
-.shape-mark.kind-reference {
-  color: var(--reference);
-}
-
-.shape-mark.kind-shared {
-  color: var(--shared);
-}
-
-.shape-mark.kind-gate {
-  color: var(--gate);
+.shape-mark svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .skill-node {
+  --k: var(--shared);
+  --halo: color-mix(in srgb, var(--k) 35%, transparent);
   position: relative;
   width: 188px;
   min-height: 68px;
-  padding: 10px 12px;
-  border: 1px solid currentColor;
-  background: color-mix(in srgb, var(--elevated) 92%, var(--bg));
+  padding: 9px 12px 9px 9px;
+  box-sizing: border-box;
+  border: 1.5px solid color-mix(in srgb, var(--k) 70%, transparent);
+  background: color-mix(in srgb, var(--k) 13%, var(--fill));
   color: var(--fg);
+  border-radius: 16px;
   letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--k) 25%, transparent),
+    0 6px 16px -8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .skill-node.shape-pill {
@@ -671,116 +719,110 @@ button.chip:disabled {
 }
 
 .skill-node.shape-rect {
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .skill-node.shape-hex {
-  border-radius: 12px;
+  border-radius: 22px 22px 22px 6px;
   border-width: 2px;
-  background: color-mix(in srgb, var(--agent) 16%, var(--fill));
-  box-shadow: inset 3px 0 0 var(--agent);
-  min-width: 168px;
 }
 
 .skill-node.shape-diamond {
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-  border-radius: 0;
+  border-radius: 14px;
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--k) 16%, var(--fill)) 0 8px,
+    color-mix(in srgb, var(--k) 10%, var(--fill)) 8px 16px
+  );
 }
 
-.skill-node.kind-skill {
-  border-color: var(--skill);
+.skill-node:hover {
+  transform: translateY(-1px);
+  border-color: var(--k);
+  box-shadow:
+    0 0 0 3px var(--halo),
+    0 8px 18px -8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.45));
 }
 
-.skill-node.kind-agent {
-  border-color: var(--agent);
-  color: color-mix(in srgb, var(--fg) 92%, var(--agent));
-}
-
-.skill-node.kind-script {
-  border-color: var(--script);
-}
-
-.skill-node.kind-reference {
-  border-color: var(--reference);
-}
-
-.skill-node.kind-shared {
-  border-color: var(--shared);
-}
-
-.skill-node.kind-gate {
-  border-color: var(--gate);
-}
-
-.skill-node.shape-diamond .skill-node-title,
-.skill-node.shape-diamond .skill-node-meta {
-  padding-left: 22px;
-  padding-right: 22px;
-}
-
-.skill-node.is-entry,
 .skill-node.is-selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--fill) 80%, var(--bg));
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--k);
+  box-shadow:
+    0 0 0 3px var(--halo),
+    0 0 0 5px color-mix(in srgb, var(--k) 15%, transparent);
 }
 
 .skill-node.is-entry {
-  font-weight: 650;
-  outline: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  outline-offset: 2px;
+  border-width: 2px;
+}
+
+.skill-node.is-entry::before {
+  content: "start";
+  position: absolute;
+  top: -9px;
+  left: 16px;
+  z-index: 2;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--k);
+  color: var(--bg);
+  pointer-events: none;
 }
 
 .skill-node.is-pending {
   border-style: dashed;
-  border-color: var(--accent);
+  opacity: 0.85;
 }
 
 .skill-node-body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
-  min-height: 52px;
+  gap: 3px;
+  min-height: 44px;
 }
 
 .skill-node-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .skill-node-title {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.skill-node.is-entry .skill-node-title {
-  font-weight: 700;
-}
-
 .skill-node-meta {
-  font-size: 11px;
-  color: var(--muted);
-  padding-left: 22px;
+  padding-left: 34px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 16px;
 }
 
+.skill-node-meta .tag,
 .skill-node-meta .agent-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 4px;
   font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bg);
-  background: var(--agent);
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  background: color-mix(in srgb, var(--k) 22%, transparent);
+  color: color-mix(in srgb, var(--fg) 80%, var(--k));
 }
 
 .expand-btn {
@@ -830,6 +872,8 @@ button.chip:disabled {
 
 .react-flow__edge-path {
   stroke: var(--edge);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .edge-inferred .react-flow__edge-path {
@@ -840,7 +884,26 @@ button.chip:disabled {
   stroke: var(--accent);
 }
 
-/* Compact Procedure: thicker, higher-contrast connectors. */
+.react-flow__edge.edge-adjacent .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent) !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 6 6 !important;
+  animation: graphtale-edge-flow 1s linear infinite;
+}
+
+.react-flow__edge.edge-compact.edge-adjacent .react-flow__edge-path,
+.react-flow__edge.edge-compact.selected .react-flow__edge-path {
+  stroke-width: 3px !important;
+}
+
+@keyframes graphtale-edge-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Compact Procedure: thicker connectors, still on the quiet edge color. */
 .edge-compact .react-flow__edge-path {
   stroke-width: 2.4;
 }
@@ -852,7 +915,7 @@ button.chip:disabled {
 }
 
 .edge-compact.edge-explicit .react-flow__edge-path {
-  stroke: color-mix(in srgb, var(--edge) 70%, #ffffff);
+  stroke: color-mix(in srgb, var(--edge) 45%, var(--fg));
   stroke-width: 2.5;
 }
 
@@ -901,6 +964,102 @@ button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible {
 .diagnosis-actions summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .inspector-actions, .toolbar-stats { flex-wrap: wrap; }
 .inspector .path { overflow-wrap: anywhere; }
+body.vscode-high-contrast .skill-node,
+body.vscode-high-contrast-light .skill-node {
+  background: var(--vscode-editor-background, var(--bg));
+  border-color: var(--vscode-contrastBorder, CanvasText);
+  box-shadow: none;
+  color: var(--vscode-foreground, var(--fg));
+}
+
+body.vscode-high-contrast .skill-node.shape-diamond,
+body.vscode-high-contrast-light .skill-node.shape-diamond {
+  background: var(--vscode-editor-background, var(--bg));
+  border-style: double;
+  border-width: 4px;
+}
+
+body.vscode-high-contrast .skill-node:hover,
+body.vscode-high-contrast .skill-node.is-selected,
+body.vscode-high-contrast-light .skill-node:hover,
+body.vscode-high-contrast-light .skill-node.is-selected {
+  outline: 2px solid var(--vscode-focusBorder, Highlight);
+  outline-offset: 2px;
+  box-shadow: none;
+  transform: none;
+  border-color: var(--vscode-contrastBorder, CanvasText);
+}
+
+body.vscode-high-contrast .skill-node.is-pending,
+body.vscode-high-contrast-light .skill-node.is-pending {
+  opacity: 1;
+  border-style: dashed;
+}
+
+body.vscode-high-contrast .skill-node-meta .tag,
+body.vscode-high-contrast .skill-node-meta .agent-badge,
+body.vscode-high-contrast-light .skill-node-meta .tag,
+body.vscode-high-contrast-light .skill-node-meta .agent-badge {
+  background: transparent;
+  color: var(--vscode-foreground, CanvasText);
+  border: 1px solid var(--vscode-contrastBorder, CanvasText);
+}
+
+@media (forced-colors: active) {
+  .skill-node {
+    background: Canvas;
+    border-color: CanvasText;
+    box-shadow: none;
+    color: CanvasText;
+  }
+
+  .skill-node.shape-diamond {
+    background: Canvas;
+    border-style: double;
+    border-width: 4px;
+  }
+
+  .skill-node:hover,
+  .skill-node.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .skill-node.is-pending {
+    opacity: 1;
+  }
+
+  .shape-mark,
+  .skill-node.is-entry::before {
+    background: CanvasText;
+    color: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .skill-node-meta .tag,
+  .skill-node-meta .agent-badge {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-node,
+  .skill-node:hover {
+    transition: none;
+    transform: none;
+  }
+
+  .react-flow__edge.edge-adjacent .react-flow__edge-path,
+  .react-flow__edge.selected .react-flow__edge-path,
+  .react-flow__edge.animated path {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 720px) {
   .toolbar { flex-wrap: wrap; padding: 8px; }
   .toolbar-stats .stat { display: none; }
