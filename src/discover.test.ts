@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { discoverSkills, parseFrontmatter, skillLocationLabel } from "./discover";
+import { discoverSkills, skillLocationLabel } from "./discover";
 
 function writeSkill(root: string, files: Record<string, string>): void {
   for (const [rel, body] of Object.entries(files)) {
@@ -11,53 +11,6 @@ function writeSkill(root: string, files: Record<string, string>): void {
     fs.writeFileSync(full, body, "utf8");
   }
 }
-
-describe("parseFrontmatter", () => {
-  it("returns empty fields when there is no frontmatter", () => {
-    expect(parseFrontmatter("# just a title\n")).toEqual({ name: "", description: "" });
-  });
-
-  it("does not throw on malformed YAML and reports the file line", () => {
-    const result = parseFrontmatter(`---
-name: [broken
-description: this yaml is invalid
----
-
-# Broken
-`);
-    expect(result.name).toBe("");
-    expect(result.description).toBe("");
-    expect(result.error).toMatch(/Invalid YAML frontmatter at line 3/);
-    expect(result.error).not.toMatch(/name: \[broken/);
-  });
-
-  it("reports a missing closing fence", () => {
-    const result = parseFrontmatter("---\nname: unclosed\ndescription: missing\n\n## Instructions\n1. Read\n");
-    expect(result.error).toMatch(/missing its closing ---/);
-    expect(result.name).toBe("");
-  });
-
-  it("reports a scalar document and leaves an empty document alone", () => {
-    for (const body of ["just a string", "42", "true", "null"]) {
-      expect(parseFrontmatter(`---\n${body}\n---\n`).error).toMatch(/mapping, not a single value/);
-    }
-    expect(parseFrontmatter("---\n\n---\n")).toEqual({ name: "", description: "" });
-  });
-
-  it("reports a YAML list with the same mapping warning", () => {
-    expect(parseFrontmatter("---\n- alpha\n- beta\n---\n")).toEqual({
-      name: "",
-      description: "",
-      error: "YAML frontmatter must be a mapping, not a single value.",
-    });
-  });
-
-  it("keeps the name when a BOM precedes the fence, including CRLF", () => {
-    const fields = { name: "bom-skill", description: "kept" };
-    expect(parseFrontmatter("\uFEFF---\nname: bom-skill\ndescription: kept\n---\n")).toMatchObject(fields);
-    expect(parseFrontmatter("\uFEFF---\r\nname: bom-skill\r\ndescription: kept\r\n---\r\n")).toMatchObject(fields);
-  });
-});
 
 describe("discoverSkills", () => {
   it("keeps listing a skill when frontmatter YAML is invalid", () => {

@@ -2,74 +2,141 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS } from "./fileAccess";
-import { parseFrontmatter } from "./discover";
-import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
+import { parseFrontmatter } from "./frontmatter";
+import type { Detection } from "./procedureDetection";
+import { detectSteps } from "./procedureDetection";
+import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
+import { resolveSkillResource, type ResourceResolver } from "./procedureResources";
+import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillGraph } from "./shared/protocol";
 import { buildFixPrompt, emptyDiagnosis } from "./shared/protocol";
-import { frontmatterNeverCloses, stripBom, stripFrontmatter } from "./text";
+import { frontmatterNeverCloses, stripBom } from "./text";
 
 export type ParseProcedureOptions = { skillRoot: string; catalog: CatalogSkill[]; homedir?: string };
 /** @deprecated use ParseProcedureOptions */
 export type ParsePipelineOptions = ParseProcedureOptions;
 
-import { detectSteps, type Detection } from "./procedureDetection";
-
 const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
 
+type LoadedSkill = {
+  skillRoot: string;
+  skillFile: string;
+  skillText: string;
+  skillName: string;
+  homedir: string;
+  warnings: string[];
+};
+
+type Candidate = { path: string; text: string };
+
 export function parseProcedure(options: ParseProcedureOptions): ProcedureResult {
+  const loaded = loadSkill(options);
+  for (const candidate of candidateDocs(loaded)) {
+    noteUnclosed(candidate, loaded);
+    const detection = detectSteps(candidate.text, candidate.path);
+    if (!detection || detection.steps.length < 1) continue;
+    capSteps(detection, loaded.warnings);
+    const graph = wrapWithSource(
+      buildStepGraph(loaded.skillName, loaded.skillRoot, detection, resourceResolver(loaded)),
+      loaded.skillFile,
+      loaded.skillText,
+      candidate.text,
+    );
+    const diagnosis = flowDiagnosis(detection, path.basename(candidate.path), loaded.skillName, loaded.warnings);
+    return finish(graph, diagnosis, loaded.warnings);
+  }
+  return unfinished(loaded);
+}
+
+function loadSkill(options: ParseProcedureOptions): LoadedSkill {
   const skillRoot = path.resolve(options.skillRoot);
   const skillFile = path.join(skillRoot, "SKILL.md");
   const warnings: string[] = [];
-  const readInput = (file: string) => {
-    const result = readTextFile(file, INPUT_READ_LIMIT_BYTES);
-    if (result.warning) warnings.push(result.warning);
-    return stripBom(result.text);
-  };
-  const skillText = readInput(skillFile);
+  const skillText = readInput(skillFile, warnings);
   const meta = parseFrontmatter(skillText);
   if (meta.error) warnings.push(`SKILL.md: ${meta.error}`);
-  const skillName = meta.name || path.basename(skillRoot);
-  const homedir = options.homedir ?? os.homedir();
-  const workflowPath = findLinkedPath(skillText, skillRoot, homedir, "workflow.md");
-  const operationsPath = findLinkedPath(skillText, skillRoot, homedir, "operations.md");
-  const candidates: Array<{ path: string; text: string }> = [
-    ...(workflowPath ? [{ path: workflowPath, text: readInput(workflowPath) }] : []),
-    { path: skillFile, text: skillText },
-    ...(operationsPath && operationsPath !== workflowPath ? [{ path: operationsPath, text: readInput(operationsPath) }] : []),
-  ];
-
-  for (const candidate of candidates) {
-    if (path.resolve(candidate.path) !== path.resolve(skillFile) && frontmatterNeverCloses(candidate.text)) {
-      warnings.push(`${path.basename(candidate.path)}: Frontmatter is missing its closing ---.`);
-    }
-    const detection = detectSteps(candidate.text, candidate.path);
-    if (!detection || detection.steps.length < 1) continue;
-    if (detection.steps.length > FLOW_MAX_STEPS) {
-      detection.steps = detection.steps.slice(0, FLOW_MAX_STEPS);
-      detection.links = detection.links.filter(link => link.from < FLOW_MAX_STEPS && link.to < FLOW_MAX_STEPS);
-      warnings.push(`Flow stopped after ${FLOW_MAX_STEPS} steps.`);
-    }
-    const graph = wrapWithSource(buildStepGraph(skillName, skillRoot, detection, homedir), skillFile, skillText);
-    const confidence = detection.relationships === "explicit" && !warnings.length ? "high" : "partial";
-    const detail = detection.relationships === "explicit"
-      ? "The ordered steps are stated in the source."
-      : "Some relationships are unresolved or only part of the structure is supported.";
-    return finish(graph, {
-      confidence,
-      message: `Flow detected from ${path.basename(candidate.path)} as ${detection.sourceKind} (${detection.steps.length} steps). ${detail}`,
-      fixPrompt: buildFixPrompt(skillName, detail),
-    }, warnings);
-  }
-
-  const linked = workflowPath ?? operationsPath;
-  if (linked) {
-    const result = partialResult(skillName, skillRoot, skillFile, skillText, linked, readText(linked));
-    return finish(result.graph, result.diagnosis, warnings);
-  }
-  return finish(
-    { skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot, nodes: [], edges: [] },
-    emptyDiagnosis(skillName),
+  return {
+    skillRoot,
+    skillFile,
+    skillText,
+    skillName: meta.name || path.basename(skillRoot),
+    homedir: options.homedir ?? os.homedir(),
     warnings,
-  );
+  };
+}
+
+function resourceResolver(loaded: LoadedSkill): ResourceResolver {
+  return (resource, sourcePath) => resolveSkillResource({
+    resource,
+    skillRoot: loaded.skillRoot,
+    homedir: loaded.homedir,
+    sourcePath,
+  });
+}
+
+function readInput(file: string, warnings: string[]): string {
+  const result = readTextFile(file, INPUT_READ_LIMIT_BYTES);
+  if (result.warning) warnings.push(result.warning);
+  return stripBom(result.text);
+}
+
+function candidateDocs(loaded: LoadedSkill): Candidate[] {
+  const workflowPath = findLinkedPath(loaded.skillText, loaded.skillRoot, loaded.homedir, "workflow.md");
+  const operationsPath = findLinkedPath(loaded.skillText, loaded.skillRoot, loaded.homedir, "operations.md");
+  const docs: Candidate[] = [{ path: loaded.skillFile, text: loaded.skillText }];
+  if (workflowPath) docs.unshift({ path: workflowPath, text: readInput(workflowPath, loaded.warnings) });
+  if (operationsPath && operationsPath !== workflowPath) docs.push({ path: operationsPath, text: readInput(operationsPath, loaded.warnings) });
+  return docs;
+}
+
+function noteUnclosed(candidate: Candidate, loaded: LoadedSkill): void {
+  if (path.resolve(candidate.path) === path.resolve(loaded.skillFile)) return;
+  if (!frontmatterNeverCloses(candidate.text)) return;
+  loaded.warnings.push(`${path.basename(candidate.path)}: Frontmatter is missing its closing ---.`);
+}
+
+function capSteps(detection: Detection, warnings: string[]): void {
+  if (detection.steps.length <= FLOW_MAX_STEPS) return;
+  detection.steps = detection.steps.slice(0, FLOW_MAX_STEPS);
+  detection.links = detection.links.filter((link) => link.from < FLOW_MAX_STEPS && link.to < FLOW_MAX_STEPS);
+  warnings.push(`Flow stopped after ${FLOW_MAX_STEPS} steps.`);
+}
+
+function flowDiagnosis(detection: Detection, sourceName: string, skillName: string, warnings: string[]): ProcedureDiagnosis {
+  const explicit = detection.relationships === "explicit";
+  const confidence = explicit && warnings.length === 0 ? "high" : "partial";
+  const detail = explicit
+    ? "The ordered steps are stated in the source."
+    : "Some relationships are unresolved or only part of the structure is supported.";
+  const message = `Flow detected from ${sourceName} as ${detection.sourceKind} (${detection.steps.length} steps). ${detail}`;
+  return { confidence, message, fixPrompt: buildFixPrompt(skillName, detail) };
+}
+
+function unfinished(loaded: LoadedSkill): ProcedureResult {
+  const linked = linkedPath(loaded);
+  if (!linked) {
+    const graph: SkillGraph = {
+      skillId: `${loaded.skillName}-procedure`,
+      skillName: loaded.skillName,
+      rootPath: loaded.skillRoot,
+      nodes: [],
+      edges: [],
+    };
+    return finish(graph, emptyDiagnosis(loaded.skillName), loaded.warnings);
+  }
+  const result = partialResult({
+    skillName: loaded.skillName,
+    skillRoot: loaded.skillRoot,
+    skillFile: loaded.skillFile,
+    skillText: loaded.skillText,
+    linkedPath: linked,
+    linkedText: readInput(linked, loaded.warnings),
+  });
+  return finish(result.graph, result.diagnosis, loaded.warnings);
+}
+
+function linkedPath(loaded: LoadedSkill): string | undefined {
+  return findLinkedPath(loaded.skillText, loaded.skillRoot, loaded.homedir, "workflow.md")
+    ?? findLinkedPath(loaded.skillText, loaded.skillRoot, loaded.homedir, "operations.md");
 }
 
 /** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
@@ -78,7 +145,7 @@ function finish(graph: SkillGraph, diagnosis: ProcedureDiagnosis, warnings: stri
   const extra = notes.filter((note) => !diagnosis.message.includes(note));
   const message = extra.length ? `${diagnosis.message} ${extra.join(" ")}` : diagnosis.message;
   const fixPrompt = extra.length ? `${diagnosis.fixPrompt}\n\nAlso observed:\n${extra.join("\n")}` : diagnosis.fixPrompt;
-  const confidence = diagnosis.confidence === "high" && notes.length ? "partial" : diagnosis.confidence;
+  const confidence = diagnosis.confidence === "high" && notes.length > 0 ? "partial" : diagnosis.confidence;
   return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
 }
 
@@ -87,85 +154,8 @@ export function parsePipeline(options: ParsePipelineOptions): SkillGraph {
   return parseProcedure(options).graph;
 }
 
-function buildStepGraph(skillName: string, skillRoot: string, detection: Detection, homedir: string): SkillGraph {
-  const usedIds = new Set<string>();
-  const nodes: SkillNode[] = detection.steps.map((step, index) => {
-    const resource = step.resource ?? step.body;
-    const resourcePath = resolveResource(resource, skillRoot, homedir, step.source.path);
-    const kind = kindForResource(resource);
-    const baseId = detection.sourceKind === "P/N rows" ? `step:${step.display}` : `step:${index + 1}`;
-    const id = usedIds.has(baseId) ? `${baseId}:${index + 1}` : baseId;
-    usedIds.add(id);
-    return {
-      id, label: `${step.display}. ${plainTitle(step.title)}`, kind,
-      path: step.source.path, source: step.source,
-      resourcePath,
-      summary: firstLine(step.body) || step.title, excerpt: step.body.slice(0, 4000), uses: [],
-      isEntry: index === 0, isBlock: kind === "agent",
-    };
-  });
-  const edges: SkillEdge[] = detection.links.map(link => ({
-    from: nodes[link.from].id, to: nodes[link.to].id, label: link.label,
-    relationship: "explicit", source: link.source,
-  }));
-  for (const node of nodes) {
-    const outgoing = edges.filter(edge => edge.from === node.id);
-    if (outgoing.length > 1 && outgoing.some(edge => edge.label)) node.kind = "gate";
-  }
-  return { skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot, nodes, edges };
-}
-
-function wrapWithSource(graph: SkillGraph, skillFile: string, skillText: string): SkillGraph {
-  const sourcePath = graph.nodes[0]?.source?.path;
-  if (!sourcePath || !graph.nodes[0]) return graph;
-  const skillNode: SkillNode = {
-    id: "skill-md", label: "SKILL.md", kind: "skill", path: skillFile,
-    source: { path: skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(skillText)), uses: [], isEntry: true,
-  };
-  for (const node of graph.nodes) node.isEntry = false;
-  if (path.resolve(sourcePath) === path.resolve(skillFile)) {
-    return { ...graph, nodes: [skillNode, ...graph.nodes], edges: [{ from: "skill-md", to: graph.nodes[0].id, label: "source", relationship: "inferred", inferred: true }, ...graph.edges] };
-  }
-  const sourceText = readText(sourcePath);
-  const sourceNode: SkillNode = {
-    id: "procedure-source", label: path.basename(sourcePath), kind: "reference", path: sourcePath,
-    source: { path: sourcePath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(sourceText)) || "Flow source",
-    excerpt: sourceText.slice(0, 4000), uses: [],
-  };
-  return {
-    ...graph, nodes: [skillNode, sourceNode, ...graph.nodes],
-    edges: [
-      { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
-      ...(graph.edges.some(edge => edge.from === graph.nodes[0].id) ? [{ from: "procedure-source", to: graph.nodes[0].id, relationship: "inferred" as const, inferred: true, label: "steps" }] : []),
-      ...graph.edges,
-    ],
-  };
-}
-
-function partialResult(skillName: string, skillRoot: string, skillFile: string, skillText: string, linkedPath: string, linkedText: string): ProcedureResult {
-  return {
-    graph: {
-      skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot,
-      nodes: [
-        { id: "skill-md", label: "SKILL.md", kind: "skill", path: skillFile, source: { path: skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(skillText)), uses: [], isEntry: true },
-        { id: "workflow", label: path.basename(linkedPath), kind: "reference", path: linkedPath, source: { path: linkedPath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(linkedText)), excerpt: linkedText.slice(0, 4000), uses: [] },
-      ],
-      edges: [{ from: "skill-md", to: "workflow", label: "workflow", confidence: "low", relationship: "unresolved" }],
-    },
-    diagnosis: {
-      confidence: "partial", message: `Found ${path.relative(skillRoot, linkedPath)} but no supported step structure.`,
-      fixPrompt: buildFixPrompt(skillName, `Found ${path.relative(skillRoot, linkedPath)} but no supported step structure.`),
-    },
-  };
-}
-
 function findLinkedPath(text: string, skillRoot: string, homedir: string, basename: string): string | undefined {
-  const candidates: string[] = [];
-  for (const match of text.matchAll(LINK_RE)) {
-    const href = match[2].trim().split("#")[0];
-    if (path.basename(href).toLowerCase() === basename) candidates.push(href);
-  }
-  candidates.push(basename, path.join("references", basename));
+  const candidates = linkedCandidates(text, basename);
   for (const candidate of candidates) {
     const resolved = candidate.startsWith("~/") ? path.resolve(homedir, candidate.slice(2)) : path.resolve(skillRoot, candidate);
     if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
@@ -173,37 +163,11 @@ function findLinkedPath(text: string, skillRoot: string, homedir: string, basena
   return undefined;
 }
 
-function resolveResource(resource: string, skillRoot: string, homedir: string, sourcePath: string): string | undefined {
-  const markdownLink = [...resource.matchAll(LINK_RE)][0]?.[2]?.split("#")[0];
-  if (markdownLink && !/^[a-z]+:\/\//i.test(markdownLink)) {
-    const linked = markdownLink.startsWith("~/") ? path.resolve(homedir, markdownLink.slice(2)) : path.resolve(path.dirname(sourcePath), markdownLink);
-    if (fs.existsSync(linked) && fs.statSync(linked).isFile()) return linked;
+function linkedCandidates(text: string, basename: string): string[] {
+  const fromLinks: string[] = [];
+  for (const match of text.matchAll(LINK_RE)) {
+    const href = (match[2] ?? "").trim().split("#")[0] ?? "";
+    if (path.basename(href).toLowerCase() === basename) fromLinks.push(href);
   }
-  const agent = resource.match(/\bagent\s+([\w-]+)/i)?.[1];
-  if (agent) {
-    for (const candidate of [path.join(skillRoot, "agents", `${agent}.md`), path.join(skillRoot, "prompts", `${agent}.md`), path.join(homedir, ".claude", "agents", `${agent}.md`)]) {
-      if (fs.existsSync(candidate)) return candidate;
-    }
-  }
-  const file = resource.match(/(?:scripts|references|prompts)\/[^\s,`]+/)?.[0];
-  if (file) {
-    const resolved = path.resolve(skillRoot, file);
-    if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
-  }
-  return undefined;
-}
-
-function kindForResource(resource?: string): SkillNode["kind"] {
-  if (/\bagent\s+|\bthis loop\b/i.test(resource ?? "")) return "agent";
-  if (/scripts\//i.test(resource ?? "")) return "script";
-  return "reference";
-}
-function plainTitle(value: string): string {
-  return value.replace(/\*\*/g, "").trim();
-}
-function firstLine(text: string): string {
-  return (text.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith("#") && line !== "---") ?? "").slice(0, 220);
-}
-function readText(filePath: string): string {
-  return stripBom(readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text);
+  return [...fromLinks, basename, path.join("references", basename)];
 }
