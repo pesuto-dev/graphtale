@@ -49,6 +49,12 @@ function frontmatterLine(line: string, index: number, hiding: boolean, closed: b
   return { text: "", reveal: false };
 }
 
+/** First non-empty line that is not a heading or a frontmatter fence. */
+export function firstLine(text: string): string {
+  const line = text.split(/\r?\n/).map((row) => row.trim()).find((row) => row && !row.startsWith("#") && row !== "---");
+  return (line ?? "").slice(0, 220);
+}
+
 export function firstParagraph(text: string): string {
   const lines = text
     .split(/\r?\n/)

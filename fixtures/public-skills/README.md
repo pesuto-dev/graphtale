@@ -4,7 +4,7 @@ Committed stand-ins for marketplace skills. Used by first-run tests.
 
 | Folder | Expectation |
 | --- | --- |
-| `prose-only/` | Flow confidence `none` (honest empty) |
+| `prose-only/` | Partial Flow: unordered `## Guidelines` (`heuristic: headings, no order`) |
 | `first-steps/` | High-confidence Flow from **First Steps** |
 | `instructions-plain/` | High-confidence Flow from plain numbered Instructions |
 | `codex-openai/` | Catalog includes `agents/openai.yaml` |

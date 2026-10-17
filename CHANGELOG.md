@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keyboard focus runs from the toolbar to the graph steps, then the inspector. Enter or Space selects the focused step without a pointer click. Edges are no longer tab stops.
 - Flow diagnosis names a P/N cycle and the edge left out of the graph, a duplicate P/N id and the lines where it appears, an arrow to a missing id with that arrow’s source line, and a self-loop with its source line. Other partial flows still say that some relationships are unresolved.
 - A flow longer than 500 steps warns with the total number of steps and the number shown.
+- Prose skills with no numbered list and no P/N steps show `##` and `###` headings as unordered steps. Each step keeps the heading’s source line. The diagnosis is `heuristic: headings, no order`, and the Flow banner includes a short rewrite example (prose headings to numbered steps). The same example is in [parser coverage](docs/parser-coverage.md). A skill with no `##` or `###` heading still has an empty Flow. More than 500 headings warn `Flow shows 500 of N steps.`
 
 ### Changed
 

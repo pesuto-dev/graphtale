@@ -79,6 +79,8 @@ export type ProcedureDiagnosis = {
   confidence: ProcedureConfidence;
   message: string;
   fixPrompt: string;
+  /** Shown when Flow fell back to unordered markdown headings. */
+  rewriteExample?: string;
 };
 
 export type ProcedureResult = {
@@ -166,7 +168,8 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
   switch (value.type) {
     case "graph": return graph(value.graph) && graph(value.procedure) && optional(value.pipeline, graph) &&
       record(value.diagnosis) && oneOf(value.diagnosis.confidence, ["high", "partial", "none"]) &&
-      text(value.diagnosis.message) && text(value.diagnosis.fixPrompt) && list(value.catalog, catalogSkill) && direction(value.direction);
+      text(value.diagnosis.message) && text(value.diagnosis.fixPrompt) &&
+      optional(value.diagnosis.rewriteExample, text) && list(value.catalog, catalogSkill) && direction(value.direction);
     case "fileContent": return record(value.payload) && identifier(value.payload.nodeId) && identifier(value.payload.path) &&
       text(value.payload.text) && optional(value.payload.notice, text) && optional(value.payload.wrapper, wrapper =>
         record(wrapper) && identifier(wrapper.path) && text(wrapper.prefix) && text(wrapper.suffix));

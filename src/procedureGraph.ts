@@ -2,7 +2,7 @@ import * as path from "node:path";
 import type { Detection } from "./procedureDetection";
 import type { ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
-import { stripFrontmatter } from "./text";
+import { firstLine, stripFrontmatter } from "./text";
 
 export type ResourceResolver = (resource: string, sourcePath: string) => string | undefined;
 
@@ -131,9 +131,4 @@ function kindForResource(resource?: string): SkillNode["kind"] {
 
 function plainTitle(value: string): string {
   return value.replace(/\*\*/g, "").trim();
-}
-
-function firstLine(text: string): string {
-  const line = text.split(/\r?\n/).map(row => row.trim()).find(row => row && !row.startsWith("#") && row !== "---");
-  return (line ?? "").slice(0, 220);
 }
