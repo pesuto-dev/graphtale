@@ -11,6 +11,6 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts", "webview/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "webview/**/*.test.ts", "webview/**/*.test.tsx"],
   },
 });

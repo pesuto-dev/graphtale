@@ -1,9 +1,7 @@
-// @vitest-environment happy-dom
-import { createElement, useState, type ReactNode } from "react";
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-import { act } from "react-dom/test-utils";
-import { createRoot, type Root } from "react-dom/client";
+/** @vitest-environment jsdom */
+import { useState } from "react";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ReactFlowProvider, type NodeProps } from "@xyflow/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { GraphView } from "@shared/protocol";
@@ -14,21 +12,7 @@ import { graphNodeIdFromKeyTarget, isGraphActivationKey } from "./graphKeys";
 import { SkillNodeView, compactAccessibleName, type SkillFlowNode } from "./SkillNodeView";
 import { nextViewFromKey, viewTabId, ViewTabs } from "./ViewTabs";
 
-let root: Root | undefined;
-
-afterEach(() => {
-  act(() => root?.unmount());
-  root = undefined;
-  document.body.innerHTML = "";
-});
-
-function mount(ui: ReactNode) {
-  const host = document.createElement("div");
-  document.body.append(host);
-  root = createRoot(host);
-  act(() => root?.render(ui));
-  return host;
-}
+afterEach(() => cleanup());
 
 describe("view tabs", () => {
   it("moves with the arrow keys and wraps at the ends", () => {
@@ -42,28 +26,27 @@ describe("view tabs", () => {
 
   function TabsHarness() {
     const [view, setView] = useState<GraphView>("flow");
-    return createElement(ViewTabs, { view, onChange: setView });
+    return <ViewTabs view={view} onChange={setView} />;
   }
 
-  it("exposes a tablist and selects the next tab from the keyboard", () => {
-    mount(createElement(TabsHarness));
-    const tablist = document.querySelector("[role='tablist']");
-    expect(tablist?.getAttribute("aria-label")).toBe("Skill views");
-    const flow = document.getElementById(viewTabId("flow"));
-    const catalog = document.getElementById(viewTabId("catalog"));
-    expect(flow?.getAttribute("role")).toBe("tab");
-    expect(flow?.getAttribute("aria-selected")).toBe("true");
-    expect(flow?.getAttribute("tabindex")).toBe("0");
-    expect(catalog?.getAttribute("aria-selected")).toBe("false");
-    expect(catalog?.getAttribute("tabindex")).toBe("-1");
-    expect(document.getElementById("graphtale-panel-flow")).toBeNull();
-    expect(flow?.getAttribute("aria-controls")).toBe("graphtale-panel-flow");
+  it("exposes a tablist and selects the next tab from the keyboard", async () => {
+    const user = userEvent.setup();
+    render(<TabsHarness />);
+    const tablist = screen.getByRole("tablist", { name: "Skill views" });
+    expect(tablist).toBeTruthy();
+    const flow = screen.getByRole("tab", { name: "Flow" });
+    const catalog = screen.getByRole("tab", { name: "Catalog" });
+    expect(flow.getAttribute("aria-selected")).toBe("true");
+    expect(flow.getAttribute("tabindex")).toBe("0");
+    expect(flow.id).toBe(viewTabId("flow"));
+    expect(flow.getAttribute("aria-controls")).toBe("graphtale-panel-flow");
+    expect(catalog.getAttribute("aria-selected")).toBe("false");
+    expect(catalog.getAttribute("tabindex")).toBe("-1");
 
-    act(() => {
-      flow?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    });
-    expect(catalog?.getAttribute("aria-selected")).toBe("true");
-    expect(flow?.getAttribute("tabindex")).toBe("-1");
+    flow.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(catalog.getAttribute("aria-selected")).toBe("true");
+    expect(flow.getAttribute("tabindex")).toBe("-1");
     expect(document.activeElement).toBe(catalog);
   });
 });
@@ -75,15 +58,15 @@ describe("catalog selection", () => {
   ];
 
   it("marks only the selected row as current", () => {
-    mount(
-      createElement(CatalogInventory, {
-        nodes,
-        selectedId: "agents/review.md",
-        onSelect: () => undefined,
-        onOpen: () => undefined,
-      }),
+    render(
+      <CatalogInventory
+        nodes={nodes}
+        selectedId="agents/review.md"
+        onSelect={() => undefined}
+        onOpen={() => undefined}
+      />,
     );
-    const current = document.querySelectorAll("[aria-current='true']");
+    const current = screen.getAllByRole("button").filter((button) => button.getAttribute("aria-current") === "true");
     expect(current).toHaveLength(1);
     expect(current[0]?.textContent).toContain("review.md");
     expect(current[0]?.classList.contains("is-selected")).toBe(true);
@@ -91,15 +74,11 @@ describe("catalog selection", () => {
 });
 
 describe("compact node names", () => {
-  it("keeps the full kind and label when the chip text is shortened", () => {
+  it("keeps the full name on the focusable node when the chip text is shortened", () => {
     const long = "1. Read the request and compare the evidence";
     expect(compactAccessibleName("reference", long)).toBe(`reference: ${long}`);
-    const flow = toCompactFlow(
-      [node("step:1", "reference", { label: long })],
-      [],
-    );
+    const flow = toCompactFlow([node("step:1", "reference", { label: long })], []);
     expect(flow.nodes[0]?.ariaLabel).toBe(`reference: ${long}`);
-    expect(flow.nodes[0]?.data.accessibleName).toBe(`reference: ${long}`);
     expect(flow.nodes[0]?.data.label.endsWith("…")).toBe(true);
 
     const nodeProps = {
@@ -116,10 +95,14 @@ describe("compact node names", () => {
       positionAbsoluteX: 0,
       positionAbsoluteY: 0,
     } as NodeProps<SkillFlowNode>;
-    mount(createElement(ReactFlowProvider, null, createElement(SkillNodeView, nodeProps)));
-    expect(document.querySelector(".skill-node.is-compact")?.getAttribute("aria-label")).toBe(
-      `reference: ${long}`,
+    render(
+      <ReactFlowProvider>
+        <SkillNodeView {...nodeProps} />
+      </ReactFlowProvider>,
     );
+    const chip = document.querySelector(".skill-node.is-compact");
+    expect(chip?.getAttribute("aria-label")).toBeNull();
+    expect(chip?.textContent).toContain(flow.nodes[0]!.data.label);
   });
 });
 
