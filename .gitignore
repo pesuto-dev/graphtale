@@ -8,8 +8,7 @@ dist/
 webview/preview-data.json
 assets/demo-skills/*.png
 
-# Local copies of installed skills (regenerate via scripts/sync-user-skills.sh).
-# Keep README; ignore the bulk so vendor/user trees are not committed by accident.
+# Optional local skill copies. Keep the README; ignore the trees so they are not committed.
 fixtures/user-skills/claude/
 fixtures/user-skills/agents/
 fixtures/user-skills/MANIFEST.json
@@ -17,8 +16,10 @@ fixtures/user-skills/MANIFEST.json
 # Local verification output.
 artifacts/
 
-# Private session notes and local credentials.
+# Local notes kept out of the repository.
 docs/NEXT-SESSION.md
+
+# Local credentials.
 .env
 .env.*
 !.env.example

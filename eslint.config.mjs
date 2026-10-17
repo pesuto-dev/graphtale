@@ -21,7 +21,6 @@ export default tseslint.config(
       "coverage/**",
       "webview/preview-data.json",
       "**/*.vsix",
-      "poc/**",
     ],
   },
   {
