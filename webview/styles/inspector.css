@@ -92,5 +92,14 @@ button.chip:disabled {
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
-.inspector.collapsed { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
-.inspector .path { overflow-wrap: anywhere; }
+
+.inspector.collapsed {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+}
+
+.inspector .path {
+  overflow-wrap: anywhere;
+}

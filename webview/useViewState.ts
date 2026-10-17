@@ -12,9 +12,12 @@ import { useGraphFit } from "./useGraphFit";
 import { useNarrowPanel } from "./useNarrowPanel";
 import { useViewCommands, type CopyState, type ViewCommands } from "./useViewCommands";
 
-export type ViewError = { message: string; retryable: boolean };
+export interface ViewError {
+  message: string;
+  retryable: boolean;
+}
 
-type GraphState = {
+interface GraphState {
   graph: SkillGraph;
   setGraph: Dispatch<SetStateAction<SkillGraph>>;
   procedure: SkillGraph;
@@ -29,9 +32,9 @@ type GraphState = {
   setStale: Dispatch<SetStateAction<boolean>>;
   copyState: CopyState;
   setCopyState: Dispatch<SetStateAction<CopyState>>;
-};
+}
 
-type LayoutState = {
+interface LayoutState {
   view: GraphView;
   setView: Dispatch<SetStateAction<GraphView>>;
   direction: LayoutDirection;
@@ -50,9 +53,11 @@ type LayoutState = {
   selectedIdRef: MutableRefObject<string | undefined>;
   viewRef: MutableRefObject<GraphView>;
   graphContainerRef: RefObject<HTMLDivElement>;
-};
+}
 
-export type ViewState = GraphState & LayoutState & { narrow: boolean } & ViewCommands;
+export interface ViewState extends GraphState, LayoutState, ViewCommands {
+  narrow: boolean;
+}
 
 function useGraphState(): GraphState {
   const [graph, setGraph] = useState<SkillGraph>(emptyGraph);

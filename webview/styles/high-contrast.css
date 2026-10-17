@@ -94,11 +94,31 @@ body.vscode-high-contrast-light .skill-node-meta .agent-badge {
   }
 }
 
-@media (max-width: 720px) {
-  .toolbar { flex-wrap: wrap; padding: 8px; }
-  .toolbar-stats .stat { display: none; }
-  .diagnosis-banner { flex-direction: column; max-height: 240px; overflow: auto; }
-  .inspector-head { flex-direction: column; }
-  .app { grid-template-rows: auto minmax(150px, 1fr) minmax(100px, 30%); }
-  .inspector.collapsed .hint { display: none; }
+@media (width <= 720px) {
+  .toolbar {
+    flex-wrap: wrap;
+    padding: 8px;
+  }
+
+  .toolbar-stats .stat {
+    display: none;
+  }
+
+  .diagnosis-banner {
+    flex-direction: column;
+    max-height: 240px;
+    overflow: auto;
+  }
+
+  .inspector-head {
+    flex-direction: column;
+  }
+
+  .app {
+    grid-template-rows: auto minmax(150px, 1fr) minmax(100px, 30%);
+  }
+
+  .inspector.collapsed .hint {
+    display: none;
+  }
 }

@@ -13,10 +13,9 @@ import { CatalogInventory } from "./CatalogInventory";
 import { presentEdges } from "./edges";
 import { Legend } from "./Legend";
 import { useGraphActivation } from "./useGraphActivation";
-import { useViewState } from "./useViewState";
+import type { ViewState } from "./useViewState";
 import { vscode } from "./vscode";
 
-type ViewState = ReturnType<typeof useViewState>;
 type CopyState = ViewState["copyState"];
 
 function ErrorBanner({
@@ -108,7 +107,7 @@ function FlowCanvas({ state, model }: { state: ViewState; model: AppViewModel })
   }));
   return (
     <ReactFlow
-      key={`${state.graph.rootPath}-${state.view}-${state.direction}-${state.compact}-${state.fitNonce}`}
+      key={`${state.graph.rootPath}-${state.view}-${state.direction}-${String(state.compact)}-${String(state.fitNonce)}`}
       nodes={nodes}
       edges={presentEdges(model.flow.edges, state.selectedId)}
       nodeTypes={nodeTypes}
@@ -166,7 +165,9 @@ function FlowBody({
         nodes={model.display.nodes}
         selectedId={state.selectedId}
         onSelect={state.selectNode}
-        onOpen={(nodeId) => vscode.postMessage({ type: "openFile", nodeId })}
+        onOpen={(nodeId) => {
+          vscode.postMessage({ type: "openFile", nodeId });
+        }}
       />
     );
   }
@@ -174,7 +175,13 @@ function FlowBody({
     return (
       <div className="flow-empty">
         <p>Review this skill’s files and instructions in Catalog.</p>
-        <button onClick={() => state.switchView("catalog")}>Open Catalog</button>
+        <button
+          onClick={() => {
+            state.switchView("catalog");
+          }}
+        >
+          Open Catalog
+        </button>
       </div>
     );
   }
@@ -202,7 +209,9 @@ export function FlowPane({
           <DiagnosisBanner
             diagnosis={state.diagnosis}
             copyState={state.copyState}
-            onOpenCatalog={() => state.switchView("catalog")}
+            onOpenCatalog={() => {
+              state.switchView("catalog");
+            }}
             onCopy={state.copyFixPrompt}
           />
         ) : null}

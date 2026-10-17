@@ -1,11 +1,12 @@
 :root {
   --bg: var(--vscode-editor-background, #1e1e1e);
-  --fg: var(--vscode-foreground, #cccccc);
+  --fg: var(--vscode-foreground, #ccc);
   --muted: var(--vscode-descriptionForeground, #9d9d9d);
   --border: var(--vscode-panel-border, #3c3c3c);
   --fill: var(--vscode-editorWidget-background, #252526);
   --elevated: var(--vscode-sideBar-background, #252526);
   --accent: var(--vscode-focusBorder, #007fd4);
+
   /* Each kind has its own theme color. Agent no longer shares charts-green
      with edges, and gate no longer shares charts-blue with reference. */
   --skill: color-mix(in srgb, var(--vscode-charts-orange, #d18616) 55%, var(--vscode-charts-yellow, #cca700));
@@ -58,6 +59,7 @@ button.active {
 html.preview-harness .app {
   grid-template-rows: auto minmax(0, 1fr) minmax(140px, 22%);
 }
+
 .hint,
 .path,
 .summary {
@@ -66,6 +68,7 @@ html.preview-harness .app {
   font-size: 12px;
   line-height: 1.4;
 }
+
 .main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
@@ -81,6 +84,7 @@ html.preview-harness .app {
    landed in the auto row (height 0) and `.legend` ate the 1fr. */
 .graph-pane {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
@@ -97,6 +101,7 @@ html.preview-harness .app {
 .graph-pane > .legend {
   flex: 0 0 auto;
 }
+
 .status-pill,
 .stat-pill {
   font-size: 10px;
@@ -120,6 +125,7 @@ html.preview-harness .app {
   border-color: var(--accent);
   border-style: dashed;
 }
+
 .kind-skill,
 .skill-node.kind-skill {
   --k: var(--skill);
@@ -166,12 +172,21 @@ html.preview-harness .app {
   height: 15px;
   display: block;
 }
+
 .app.inspector-closed,
 html.preview-harness .app.inspector-closed {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
-button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 3px;
+
+button:focus-visible,
+summary:focus-visible,
+.react-flow__node:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
-.main-procedure { display: flex; flex-direction: column; min-height: 0; }
-.graph-pane { flex: 1; min-height: 0; }
+
+.main-procedure {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

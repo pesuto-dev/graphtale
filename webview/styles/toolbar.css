@@ -99,13 +99,14 @@
   font-size: 11px;
   line-height: 1.45;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .fix-prompt-btn {
   flex-shrink: 0;
   border-color: var(--accent);
 }
+
 .toolbar-stats .stat {
   display: flex;
   flex-direction: column;
@@ -134,11 +135,49 @@
   border-color: var(--accent);
   font-weight: 650;
 }
-.error-banner, .read-warnings { flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--border); overflow-wrap: anywhere; }
-.error-banner { display: flex; align-items: center; gap: 12px; }
-.error-banner > button { flex-shrink: 0; white-space: nowrap; }
-.read-warnings { max-height: 120px; overflow: auto; }
-.flow-empty { padding: 24px; text-align: center; }
-.diagnosis-actions { display: grid; gap: 8px; min-width: 180px; }
-.diagnosis-actions summary { cursor: pointer; color: var(--muted); font-size: 12px; }
-.inspector-actions, .toolbar-stats { flex-wrap: wrap; }
+
+.error-banner,
+.read-warnings {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-banner > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.read-warnings {
+  max-height: 120px;
+  overflow: auto;
+}
+
+.flow-empty {
+  padding: 24px;
+  text-align: center;
+}
+
+.diagnosis-actions {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.diagnosis-actions summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.inspector-actions,
+.toolbar-stats {
+  flex-wrap: wrap;
+}

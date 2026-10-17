@@ -5,11 +5,11 @@ import { ShapeMark } from "./ShapeMark";
 
 export type InventoryGroupId = "entry" | "agents" | "scripts" | "references" | "handoffs" | "other";
 
-export type InventoryGroup = {
+export interface InventoryGroup {
   id: InventoryGroupId;
   title: string;
   nodes: SkillNode[];
-};
+}
 
 function groupIdFor(node: SkillNode): InventoryGroupId {
   if (node.isEntry || node.id === "skill-md") {
@@ -70,12 +70,12 @@ export function groupInventory(nodes: SkillNode[]): InventoryGroup[] {
   })).filter((group) => group.nodes.length > 0);
 }
 
-export type InventoryCounts = {
+export interface InventoryCounts {
   agents: number;
   scripts: number;
   references: number;
   handoffs: number;
-};
+}
 
 export function inventoryCounts(nodes: SkillNode[]): InventoryCounts {
   return {
@@ -114,8 +114,12 @@ function InventoryRow({
         type="button"
         className={selected ? "inventory-row is-selected" : "inventory-row"}
         aria-current={selected ? "true" : undefined}
-        onClick={() => onSelect(node.id)}
-        onDoubleClick={() => onOpen(node.id)}
+        onClick={() => {
+          onSelect(node.id);
+        }}
+        onDoubleClick={() => {
+          onOpen(node.id);
+        }}
       >
         <span className="inventory-row-main">
           <ShapeMark kind={node.kind} />

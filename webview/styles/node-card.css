@@ -1,6 +1,7 @@
 .skill-node {
   --k: var(--shared);
   --halo: color-mix(in srgb, var(--k) 35%, transparent);
+
   position: relative;
   width: 188px;
   min-height: 68px;
@@ -14,7 +15,7 @@
   cursor: pointer;
   box-shadow:
     0 1px 0 color-mix(in srgb, var(--k) 25%, transparent),
-    0 6px 16px -8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+    0 6px 16px -8px var(--vscode-widget-shadow, rgb(0 0 0 / 36%));
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -48,7 +49,7 @@
   border-color: var(--k);
   box-shadow:
     0 0 0 3px var(--halo),
-    0 8px 18px -8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.45));
+    0 8px 18px -8px var(--vscode-widget-shadow, rgb(0 0 0 / 45%));
 }
 
 .skill-node.is-selected {

@@ -141,7 +141,7 @@ export function SkillNodeView({
   sourcePosition,
   targetPosition,
 }: NodeProps<SkillFlowNode>): ReactElement {
-  const className = skillNodeClass(data, Boolean(selected));
+  const className = skillNodeClass(data, selected);
   if (data.compact) {
     return <CompactSkillNode data={data} className={className} />;
   }

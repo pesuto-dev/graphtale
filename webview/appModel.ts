@@ -10,7 +10,7 @@ import { toCompactFlow } from "./compactLayout";
 import { toFlow } from "./layout";
 import type { SkillFlowNode } from "./SkillNodeView";
 
-export type AppViewInput = {
+export interface AppViewInput {
   view: GraphView;
   compact: boolean;
   narrow: boolean;
@@ -21,14 +21,14 @@ export type AppViewInput = {
   selectedId: string | undefined;
   expandedIds: string[];
   stale: boolean;
-};
+}
 
-export type FlowModel = {
+export interface FlowModel {
   nodes: SkillFlowNode[];
   edges: Edge[];
-};
+}
 
-export type AppViewModel = {
+export interface AppViewModel {
   showDiagnosis: boolean;
   display: SkillGraph;
   selected: SkillNode | undefined;
@@ -39,7 +39,7 @@ export type AppViewModel = {
   inventoryCount: number;
   hint: string;
   warnings: string[];
-};
+}
 
 function countKind(nodes: SkillNode[], kind: SkillNode["kind"]): number {
   return nodes.filter((node) => node.kind === kind).length;

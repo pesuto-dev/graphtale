@@ -1,16 +1,7 @@
 /** @type {import("stylelint").Config} */
 export default {
   extends: ["stylelint-config-standard"],
-  ignoreFiles: [
-    "dist/**",
-    "node_modules/**",
-    // TODO(coding-standards): drop this ignore when webview/styles.css is split
-    // into webview/styles/<component>.css. The monolith fails
-    // stylelint-config-standard (packed high-contrast rules, duplicate
-    // selectors, legacy color functions). Rewriting it in this change
-    // conflicts with open PRs #12, #13, and #15. PR #15 already splits the file.
-    "webview/styles.css",
-  ],
+  ignoreFiles: ["dist/**", "node_modules/**"],
   rules: {
     // Compact nodes and high contrast repeat earlier selectors on purpose.
     // Reordering those blocks to satisfy this rule can change the cascade.

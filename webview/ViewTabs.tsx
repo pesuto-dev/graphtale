@@ -33,7 +33,9 @@ export function ViewTabs({
             aria-controls={viewPanelId(id)}
             tabIndex={selected ? 0 : -1}
             className={selected ? "active" : ""}
-            onClick={() => onChange(id)}
+            onClick={() => {
+              onChange(id);
+            }}
           >
             {LABELS[id]}
           </button>

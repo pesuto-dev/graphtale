@@ -4,7 +4,7 @@ import type { AppViewModel } from "./appModel";
 import type { ViewState } from "./useViewState";
 import { ViewTabs } from "./ViewTabs";
 
-export type AppToolbarProps = {
+export interface AppToolbarProps {
   skillName: string;
   view: GraphView;
   stale: boolean;
@@ -19,7 +19,7 @@ export type AppToolbarProps = {
   onToggleCompact: () => void;
   onToggleDirection: () => void;
   onRefresh: () => void;
-};
+}
 
 function countLabel(view: GraphView, compact: boolean): string {
   if (view !== "flow") {
@@ -28,10 +28,51 @@ function countLabel(view: GraphView, compact: boolean): string {
   return compact ? "shown" : "steps";
 }
 
+function refreshClass(stale: boolean): string {
+  return stale ? "refresh-btn is-stale" : "refresh-btn";
+}
+
+function refreshLabel(stale: boolean): string {
+  return stale ? "Refresh · files changed" : "Refresh";
+}
+
+function SecondaryStat(props: AppToolbarProps): ReactElement | null {
+  if (props.view !== "flow") {
+    return null;
+  }
+  const scripts = props.scriptCount > 0;
+  return (
+    <span className="stat">
+      <strong>{scripts ? props.scriptCount : props.gateCount}</strong>
+      {scripts ? "scripts" : "gates"}
+    </span>
+  );
+}
+
+function CompactButton(props: AppToolbarProps): ReactElement | null {
+  if (props.view !== "flow") {
+    return null;
+  }
+  return (
+    <button type="button" className={props.compact ? "active" : ""} onClick={props.onToggleCompact}>
+      Compact
+    </button>
+  );
+}
+
+function DirectionButton(props: AppToolbarProps): ReactElement | null {
+  if (props.view !== "flow" || props.compact) {
+    return null;
+  }
+  const label = props.direction === "LR" ? "left to right" : "top to bottom";
+  return (
+    <button type="button" onClick={props.onToggleDirection}>
+      Layout {label}
+    </button>
+  );
+}
+
 function ToolbarStats(props: AppToolbarProps): ReactElement {
-  const flow = props.view === "flow";
-  const secondaryCount = props.scriptCount > 0 ? props.scriptCount : props.gateCount;
-  const secondaryLabel = props.scriptCount > 0 ? "scripts" : "gates";
   return (
     <div className="toolbar-stats">
       <span className="stat">
@@ -42,29 +83,12 @@ function ToolbarStats(props: AppToolbarProps): ReactElement {
         <strong>{props.agentCount}</strong>
         agents
       </span>
-      {flow ? (
-        <span className="stat">
-          <strong>{secondaryCount}</strong>
-          {secondaryLabel}
-        </span>
-      ) : null}
-      <button
-        type="button"
-        className={props.stale ? "refresh-btn is-stale" : "refresh-btn"}
-        onClick={props.onRefresh}
-      >
-        {props.stale ? "Refresh · files changed" : "Refresh"}
+      <SecondaryStat {...props} />
+      <button type="button" className={refreshClass(props.stale)} onClick={props.onRefresh}>
+        {refreshLabel(props.stale)}
       </button>
-      {flow ? (
-        <button type="button" className={props.compact ? "active" : ""} onClick={props.onToggleCompact}>
-          Compact
-        </button>
-      ) : null}
-      {flow && !props.compact ? (
-        <button type="button" onClick={props.onToggleDirection}>
-          Layout {props.direction === "LR" ? "left to right" : "top to bottom"}
-        </button>
-      ) : null}
+      <CompactButton {...props} />
+      <DirectionButton {...props} />
     </div>
   );
 }

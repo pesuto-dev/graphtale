@@ -6,7 +6,11 @@ import { chromium, type Page } from "playwright";
 import { parseSkill } from "../src/parseSkill";
 import { parseProcedure } from "../src/parseProcedure";
 
-type PreviewMessage = { type?: string; nodeId?: string; target?: string };
+interface PreviewMessage {
+  type?: string;
+  nodeId?: string;
+  target?: string;
+}
 type ProcedureParse = ReturnType<typeof parseProcedure>;
 
 async function tabUntilGraph(page: Page): Promise<string[]> {
@@ -48,7 +52,9 @@ function installPreview(root: string): { previewFile: string; previous: string }
 
 async function showSkill(page: Page, skillRoot: string): Promise<ProcedureParse> {
   const parsed = parseProcedure({ skillRoot, catalog: [] });
-  await page.evaluate((message) => window.postMessage(message, "*"), {
+  await page.evaluate((message) => {
+    window.postMessage(message, "*");
+  }, {
     type: "graph",
     graph: parseSkill({ skillRoot, catalog: [] }),
     procedure: parsed.graph,
@@ -138,12 +144,12 @@ async function checkResource(page: Page, root: string): Promise<ProcedureParse> 
 }
 
 async function checkNarrowError(page: Page, parsed: ProcedureParse): Promise<void> {
-  await page.evaluate(() =>
+  await page.evaluate(() => {
     window.postMessage(
       { type: "error", message: "Could not read test file. Previous view preserved.", retryable: true },
       "*",
-    ),
-  );
+    );
+  });
   await page.getByRole("alert").waitFor({ state: "visible" });
   await page.setViewportSize({ width: 320, height: 820 });
   const retryLines = await page.getByRole("button", { name: "Retry", exact: true }).evaluate((button) => {

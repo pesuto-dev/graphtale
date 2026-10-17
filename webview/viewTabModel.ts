@@ -10,24 +10,31 @@ export function viewPanelId(view: GraphView): string {
   return `graphtale-panel-${view}`;
 }
 
+function movedIndex(index: number, last: number, key: string): number | null {
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    return index === last ? 0 : index + 1;
+  }
+  if (key === "ArrowLeft" || key === "ArrowUp") {
+    return index === 0 ? last : index - 1;
+  }
+  if (key === "Home") {
+    return 0;
+  }
+  if (key === "End") {
+    return last;
+  }
+  return null;
+}
+
 /** Arrow keys move between Flow and Catalog. Home and End jump to the ends. */
 export function nextViewFromKey(current: GraphView, key: string): GraphView | null {
   const index = VIEW_TABS.indexOf(current);
   if (index < 0) {
     return null;
   }
-  const last = VIEW_TABS.length - 1;
-  if (key === "ArrowRight" || key === "ArrowDown") {
-    return VIEW_TABS[index === last ? 0 : index + 1] ?? null;
+  const moved = movedIndex(index, VIEW_TABS.length - 1, key);
+  if (moved === null) {
+    return null;
   }
-  if (key === "ArrowLeft" || key === "ArrowUp") {
-    return VIEW_TABS[index === 0 ? last : index - 1] ?? null;
-  }
-  if (key === "Home") {
-    return VIEW_TABS[0] ?? null;
-  }
-  if (key === "End") {
-    return VIEW_TABS[last] ?? null;
-  }
-  return null;
+  return VIEW_TABS[moved] ?? null;
 }

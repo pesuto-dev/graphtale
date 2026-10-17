@@ -12,7 +12,9 @@ import { graphNodeIdFromKeyTarget, isGraphActivationKey } from "./graphKeys";
 import { SkillNodeView, compactAccessibleName, type SkillFlowNode } from "./SkillNodeView";
 import { nextViewFromKey, viewTabId, ViewTabs } from "./ViewTabs";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+});
 
 describe("view tabs", () => {
   it("moves with the arrow keys and wraps at the ends", () => {
@@ -79,9 +81,6 @@ describe("compact node names", () => {
     expect(compactAccessibleName("reference", long)).toBe(`reference: ${long}`);
     const flow = toCompactFlow([node("step:1", "reference", { label: long })], []);
     const placed = flow.nodes[0];
-    if (!placed) {
-      throw new Error("compact flow has no node");
-    }
     expect(placed.ariaLabel).toBe(`reference: ${long}`);
     expect(placed.data.label.endsWith("…")).toBe(true);
 

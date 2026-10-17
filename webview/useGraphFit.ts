@@ -3,7 +3,7 @@ import { useReactFlow, type FitViewOptions } from "@xyflow/react";
 import type { GraphView, LayoutDirection } from "@shared/protocol";
 import { COMPACT_FIT_VIEW_OPTIONS, FIT_VIEW_OPTIONS } from "./appConfig";
 
-export type GraphFitInput = {
+export interface GraphFitInput {
   compact: boolean;
   view: GraphView;
   direction: LayoutDirection;
@@ -12,7 +12,7 @@ export type GraphFitInput = {
   narrow: boolean;
   inspectorOpen: boolean;
   containerRef: RefObject<HTMLDivElement>;
-};
+}
 
 function fitOptions(compact: boolean): FitViewOptions {
   return compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS;

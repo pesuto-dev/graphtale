@@ -13,7 +13,7 @@ import { vscode } from "./vscode";
 
 export type CopyState = "idle" | "copied" | "failed";
 
-export type CommandInput = {
+export interface CommandInput {
   graph: SkillGraph;
   procedure: SkillGraph;
   diagnosis: ProcedureDiagnosis;
@@ -28,9 +28,9 @@ export type CommandInput = {
   setCompact: Dispatch<SetStateAction<boolean>>;
   setFitNonce: Dispatch<SetStateAction<number>>;
   setCopyState: Dispatch<SetStateAction<CopyState>>;
-};
+}
 
-export type ViewCommands = {
+export interface ViewCommands {
   switchView: (next: GraphView) => void;
   copyFixPrompt: () => void;
   selectNode: (id: string) => void;
@@ -39,7 +39,7 @@ export type ViewCommands = {
   onNodeDoubleClick: NodeMouseHandler<SkillFlowNode>;
   toggleDirection: () => void;
   toggleCompact: () => void;
-};
+}
 
 function applySwitch(input: CommandInput, next: GraphView): void {
   const entry = entryAfterSwitch(next, input.graph, input.procedure);
@@ -57,12 +57,12 @@ function applySwitch(input: CommandInput, next: GraphView): void {
   }
 }
 
-function applyCopy(input: CommandInput, timer: { current: number | undefined }): void {
+function scheduleCopyFailure(input: CommandInput, pending: number | undefined): number {
   vscode.postMessage({ type: "copyText", text: input.diagnosis.fixPrompt });
-  if (timer.current !== undefined) {
-    window.clearTimeout(timer.current);
+  if (pending !== undefined) {
+    window.clearTimeout(pending);
   }
-  timer.current = window.setTimeout(() => {
+  return window.setTimeout(() => {
     input.setCopyState((current) => (current === "idle" ? "failed" : current));
   }, 1500);
 }
@@ -115,15 +115,29 @@ export function useViewCommands(input: CommandInput): ViewCommands {
   }, []);
 
   return {
-    switchView: (next) => applySwitch(input, next),
-    copyFixPrompt: () => applyCopy(input, copyTimer),
-    selectNode: (id) => applySelect(input, id),
-    toggleExpanded: (id) => applyExpanded(input, id),
-    onNodeClick: (event, node) => applyNodeClick(input, event, node.id),
+    switchView: (next) => {
+      applySwitch(input, next);
+    },
+    copyFixPrompt: () => {
+      copyTimer.current = scheduleCopyFailure(input, copyTimer.current);
+    },
+    selectNode: (id) => {
+      applySelect(input, id);
+    },
+    toggleExpanded: (id) => {
+      applyExpanded(input, id);
+    },
+    onNodeClick: (event, node) => {
+      applyNodeClick(input, event, node.id);
+    },
     onNodeDoubleClick: (_event, node) => {
       vscode.postMessage({ type: "openFile", nodeId: node.id });
     },
-    toggleDirection: () => applyDirection(input),
-    toggleCompact: () => applyCompact(input),
+    toggleDirection: () => {
+      applyDirection(input);
+    },
+    toggleCompact: () => {
+      applyCompact(input);
+    },
   };
 }

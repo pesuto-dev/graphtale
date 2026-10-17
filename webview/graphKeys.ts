@@ -16,5 +16,8 @@ export function graphNodeIdFromKeyTarget(target: EventTarget | null): string | u
     return undefined;
   }
   const id = target.closest<HTMLElement>(".react-flow__node")?.dataset.id;
-  return id || undefined;
+  if (!id) {
+    return undefined;
+  }
+  return id;
 }

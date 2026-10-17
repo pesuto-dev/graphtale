@@ -38,7 +38,9 @@ function AppShell(): ReactElement {
       </div>
       <Inspector
         open={state.inspectorOpen}
-        onToggle={() => state.setInspectorOpen((value) => !value)}
+        onToggle={() => {
+          state.setInspectorOpen((value) => !value);
+        }}
         node={model.selected}
         content={state.content}
         edges={model.display.edges}
