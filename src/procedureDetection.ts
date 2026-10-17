@@ -15,7 +15,7 @@ const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
 const NUMBERED = /^(\d+[a-z]?)\.\s+(.+)$/i;
 
 /** Keep original line offsets; recognize matching fence characters and lengths. */
-function visibleLines(text: string, pn = false): string[] {
+export function visibleLines(text: string, pn = false): string[] {
   let fence: { char: string; length: number; allow: boolean } | undefined;
   let frontmatter = text.startsWith("---\n") || text.startsWith("---\r\n");
   let excluded = false;

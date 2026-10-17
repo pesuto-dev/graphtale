@@ -34,6 +34,38 @@ positions but is not scanned for steps. Conditional/looping language or a
 "choose one" introduction prevents confident sequencing of the affected list.
 This conservative vocabulary is not a general natural-language parser.
 
+## Heading heuristic
+
+When none of the supported structures above match, level-2 and level-3 headings
+(`##` / `###`) are shown as unordered steps. Each step’s source range is that
+heading line. The diagnosis is `heuristic: headings, no order`. Edges from the
+source file to those steps are inferred; no edge between the steps states an
+execution order. Examples, alternatives, choices, options, notes, reference,
+and appendix headings are skipped, including headings nested under them.
+Headings in frontmatter and code fences are ignored, as are `#` titles and
+headings deeper than level 3. A document with no `##` or `###` heading keeps
+the empty diagnosis.
+
+A numbered list or P/N graph still wins, including when it is found in a later
+candidate than a heading-only file. The Flow banner shows this rewrite so an
+author can turn the same prose into an ordered flow:
+
+```text
+Prose headings are not a procedure. Number the same work to get an ordered flow.
+
+Before:
+## Gather
+Read the ticket and note the product area.
+
+## Classify
+Decide whether this is a bug or a question.
+
+After:
+## First Steps
+1. Gather: read the ticket and note the product area.
+2. Classify: decide whether this is a bug or a question.
+```
+
 ## Source and relationship evidence
 
 Every detected step has an instruction path and inclusive, one-based line range.

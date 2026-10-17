@@ -1,0 +1,160 @@
+import * as path from "node:path";
+import { FLOW_MAX_STEPS } from "./fileAccess";
+import { visibleLines } from "./procedureDetection";
+import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
+import { buildFixPrompt } from "./shared/protocol";
+
+/** Diagnosis phrase for prose headings that do not state an execution order. */
+export const HEADING_HEURISTIC = "heuristic: headings, no order";
+
+/** Short before/after authors can copy into a real numbered flow. */
+export const HEADING_REWRITE_EXAMPLE = [
+  "Prose headings are not a procedure. Number the same work to get an ordered flow.",
+  "",
+  "Before:",
+  "## Gather",
+  "Read the ticket and note the product area.",
+  "",
+  "## Classify",
+  "Decide whether this is a bug or a question.",
+  "",
+  "After:",
+  "## First Steps",
+  "1. Gather: read the ticket and note the product area.",
+  "2. Classify: decide whether this is a bug or a question.",
+].join("\n");
+
+const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
+const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
+
+export type HeadingHit = { title: string; body: string; line: number };
+
+type HeadingArgs = {
+  skillName: string;
+  skillRoot: string;
+  skillFile: string;
+  skillText: string;
+  candidates: Array<{ path: string; text: string }>;
+  warnings: string[];
+};
+
+/** Level-2 and level-3 headings, in source order, outside excluded sections and fences. */
+export function detectUnorderedHeadings(text: string): HeadingHit[] {
+  const visible = visibleLines(text);
+  const original = text.split(/\r?\n/);
+  const parents: Array<{ level: number; excluded: boolean }> = [];
+  const hits: HeadingHit[] = [];
+  for (let i = 0; i < visible.length; i++) {
+    const heading = visible[i].match(HEADING);
+    if (!heading) continue;
+    const level = heading[1].length;
+    while (parents.length && parents.at(-1)!.level >= level) parents.pop();
+    const title = heading[2].replace(/\*\*/g, "").trim();
+    const excluded = EXCLUDED.test(heading[2]) || parents.some((parent) => parent.excluded);
+    parents.push({ level, excluded });
+    if (excluded || !title || (level !== 2 && level !== 3)) continue;
+    let end = i + 1;
+    while (end < visible.length && !HEADING.test(visible[end])) end++;
+    hits.push({ title, body: original.slice(i + 1, end).join("\n").trim(), line: i + 1 });
+  }
+  return hits;
+}
+
+/** First candidate with ##/### headings, after numbered lists and P/N rows have failed. */
+export function procedureFromHeadings(args: HeadingArgs): ProcedureResult | undefined {
+  for (const candidate of args.candidates) {
+    const hits = detectUnorderedHeadings(candidate.text);
+    if (!hits.length) continue;
+    const warnings = [...args.warnings];
+    const kept = hits.slice(0, FLOW_MAX_STEPS);
+    if (kept.length < hits.length) warnings.push(`Flow stopped after ${FLOW_MAX_STEPS} steps.`);
+    const fileName = path.basename(candidate.path);
+    return {
+      graph: buildGraph(args, candidate.path, candidate.text, kept, warnings),
+      diagnosis: diagnosisFor(args.skillName, fileName, kept.length),
+    };
+  }
+  return undefined;
+}
+
+function diagnosisFor(skillName: string, fileName: string, count: number): ProcedureDiagnosis {
+  const noun = count === 1 ? "heading" : "headings";
+  const detail = [
+    `${HEADING_HEURISTIC}.`,
+    `${fileName} has ${count} markdown ${noun} (##/###) and no numbered list or P/N steps.`,
+    "Each heading is an unordered step linked to its source line.",
+    "No edge between these steps states an execution order.",
+  ].join(" ");
+  return {
+    confidence: "partial",
+    message: detail,
+    fixPrompt: buildFixPrompt(skillName, detail),
+    rewriteExample: HEADING_REWRITE_EXAMPLE,
+  };
+}
+
+function buildGraph(args: HeadingArgs, sourcePath: string, sourceText: string, hits: HeadingHit[], warnings: string[]): SkillGraph {
+  const steps: SkillNode[] = hits.map((hit, index) => ({
+    id: `step:${index + 1}`,
+    label: hit.title,
+    kind: "reference",
+    path: sourcePath,
+    source: { path: sourcePath, startLine: hit.line, endLine: hit.line },
+    summary: firstLine(hit.body) || hit.title,
+    excerpt: hit.body.slice(0, 4000),
+    uses: [],
+  }));
+  const skillNode: SkillNode = {
+    id: "skill-md",
+    label: "SKILL.md",
+    kind: "skill",
+    path: args.skillFile,
+    source: { path: args.skillFile, startLine: 1, endLine: 1 },
+    summary: firstLine(stripFrontmatter(args.skillText)),
+    uses: [],
+    isEntry: true,
+  };
+  const headingEdge = (from: string, to: string): SkillEdge => ({
+    from, to, relationship: "inferred", inferred: true, confidence: "low",
+  });
+  const sameFile = path.resolve(sourcePath) === path.resolve(args.skillFile);
+  if (sameFile) {
+    return {
+      skillId: `${args.skillName}-procedure`,
+      skillName: args.skillName,
+      rootPath: args.skillRoot,
+      nodes: [skillNode, ...steps],
+      edges: steps.map((step) => headingEdge("skill-md", step.id)),
+      warnings: [...new Set(warnings)],
+    };
+  }
+  const sourceNode: SkillNode = {
+    id: "procedure-source",
+    label: path.basename(sourcePath),
+    kind: "reference",
+    path: sourcePath,
+    source: { path: sourcePath, startLine: 1, endLine: 1 },
+    summary: firstLine(stripFrontmatter(sourceText)) || "Flow source",
+    excerpt: sourceText.slice(0, 4000),
+    uses: [],
+  };
+  return {
+    skillId: `${args.skillName}-procedure`,
+    skillName: args.skillName,
+    rootPath: args.skillRoot,
+    nodes: [skillNode, sourceNode, ...steps],
+    edges: [
+      { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
+      ...steps.map((step) => headingEdge("procedure-source", step.id)),
+    ],
+    warnings: [...new Set(warnings)],
+  };
+}
+
+function firstLine(text: string): string {
+  return (text.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith("#") && line !== "---") ?? "").slice(0, 220);
+}
+
+function stripFrontmatter(text: string): string {
+  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+}

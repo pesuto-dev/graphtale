@@ -131,6 +131,9 @@ function AppShell() {
                 <strong>{diagnosisTitle(state.diagnosis.confidence)}</strong>
                 <p>{state.diagnosis.message}</p>
                 <p className="diagnosis-hint">{diagnosisNeededWhen(state.diagnosis.confidence)}</p>
+                {state.diagnosis.rewriteExample ? (
+                  <pre className="fix-prompt-text rewrite-example">{state.diagnosis.rewriteExample}</pre>
+                ) : null}
                 {state.copyState === "failed" && state.diagnosis.fixPrompt ? (
                   <pre className="fix-prompt-text" tabIndex={0}>
                     {state.diagnosis.fixPrompt}

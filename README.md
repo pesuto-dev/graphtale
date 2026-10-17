@@ -105,9 +105,11 @@ instruction sections, plus explicit P/N rows and arrows. The full rules and
 limits are in [parser coverage](docs/parser-coverage.md). Catalog is an
 inventory, not a second flow.
 
-The parser is conservative. Prose-only instructions, examples, choices, loops,
-unsupported relationships, and ambiguous ordering can produce an empty or
-partial diagnosis. Read limits are in [file limits](docs/file-limits.md).
+The parser is conservative. Prose with `##` or `###` headings and no numbered
+list or P/N graph is shown as unordered steps (`heuristic: headings, no order`),
+with a short rewrite example in the diagnosis. Prose without those headings,
+examples, choices, loops, unsupported relationships, and ambiguous ordering can
+produce an empty or partial diagnosis. Read limits are in [file limits](docs/file-limits.md).
 
 ## Privacy
 

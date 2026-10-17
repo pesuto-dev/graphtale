@@ -7,16 +7,19 @@ const publicRoot = path.resolve(__dirname, "../fixtures/public-skills");
 const emptyHome = path.resolve(__dirname, "../fixtures/empty-home");
 
 describe("first-run public skills", () => {
-  it("keeps an honest none diagnosis for prose-only marketplace skills", () => {
+  it("shows unordered headings for a prose skill that has section headings", () => {
     const result = parseProcedure({
       skillRoot: path.join(publicRoot, "prose-only"),
       catalog: [],
       homedir: emptyHome,
     });
-    expect(result.diagnosis.confidence).toBe("none");
-    expect(result.graph.nodes).toHaveLength(0);
-    expect(result.diagnosis.message).toMatch(/No supported step structure/i);
-    expect(result.diagnosis.fixPrompt).toMatch(/First Steps|numbered/i);
+    expect(result.diagnosis.confidence).toBe("partial");
+    expect(result.diagnosis.message).toMatch(/heuristic: headings, no order/);
+    expect(result.diagnosis.rewriteExample).toMatch(/## First Steps/);
+    const steps = result.graph.nodes.filter((n) => n.id.startsWith("step:"));
+    expect(steps.map((n) => n.label)).toEqual(["Guidelines"]);
+    expect(steps[0]?.source).toMatchObject({ startLine: 10, endLine: 10 });
+    expect(result.graph.edges.filter((e) => e.from.startsWith("step:"))).toHaveLength(0);
   });
 
   it("builds a high-confidence procedure from First Steps", () => {

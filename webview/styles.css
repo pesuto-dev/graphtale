@@ -148,6 +148,11 @@ html.preview-harness .app {
   color: var(--muted);
 }
 
+.rewrite-example {
+  max-height: none;
+  color: var(--fg);
+}
+
 .fix-prompt-text {
   margin: 8px 0 0;
   max-height: 7.5em;

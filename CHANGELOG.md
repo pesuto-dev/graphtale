@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Prose skills with no numbered list and no P/N steps show `##` and `###` headings as unordered steps. Each step keeps the heading’s source line. The diagnosis is `heuristic: headings, no order`, and the Flow banner includes a short rewrite example (prose headings to numbered steps). The same example is in [parser coverage](docs/parser-coverage.md). A skill with no `##` or `###` heading still has an empty Flow.
+
 ### Changed
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.

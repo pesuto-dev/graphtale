@@ -10,6 +10,7 @@ export type ParseProcedureOptions = { skillRoot: string; catalog: CatalogSkill[]
 /** @deprecated use ParseProcedureOptions */
 export type ParsePipelineOptions = ParseProcedureOptions;
 
+import { procedureFromHeadings } from "./headingFallback";
 import { detectSteps, type Detection } from "./procedureDetection";
 
 const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
@@ -54,6 +55,9 @@ export function parseProcedure(options: ParseProcedureOptions): ProcedureResult 
       },
     };
   }
+
+  const headings = procedureFromHeadings({ skillName, skillRoot, skillFile, skillText, candidates, warnings });
+  if (headings) return headings;
 
   const linked = workflowPath ?? operationsPath;
   if (linked) { const result = partialResult(skillName, skillRoot, skillFile, skillText, linked, readText(linked)); result.graph.warnings = warnings; return result; }
