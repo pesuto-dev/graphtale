@@ -1,0 +1,19 @@
+.react-flow__minimap {
+  background: var(--fill) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: var(--fill) !important;
+  border-bottom-color: var(--border) !important;
+  fill: var(--fg) !important;
+}

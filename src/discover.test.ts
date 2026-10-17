@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { discoverSkills, parseFrontmatter, skillLocationLabel } from "./discover";
+import { discoverSkills, skillLocationLabel } from "./discover";
 
 function writeSkill(root: string, files: Record<string, string>): void {
   for (const [rel, body] of Object.entries(files)) {
@@ -11,25 +11,6 @@ function writeSkill(root: string, files: Record<string, string>): void {
     fs.writeFileSync(full, body, "utf8");
   }
 }
-
-describe("parseFrontmatter", () => {
-  it("returns empty fields when there is no frontmatter", () => {
-    expect(parseFrontmatter("# just a title\n")).toEqual({ name: "", description: "" });
-  });
-
-  it("does not throw on malformed YAML and reports an error", () => {
-    const result = parseFrontmatter(`---
-name: [broken
-description: this yaml is invalid
----
-
-# Broken
-`);
-    expect(result.name).toBe("");
-    expect(result.description).toBe("");
-    expect(result.error).toMatch(/YAML|Nesting|Unexpected|flow/i);
-  });
-});
 
 describe("discoverSkills", () => {
   it("keeps listing a skill when frontmatter YAML is invalid", () => {

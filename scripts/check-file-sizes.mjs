@@ -19,16 +19,10 @@ const cssLimit = 300;
  * is at or under its hard limit. A stale entry (file missing or already under
  * the limit) fails this script.
  *
- * webview/styles.css is the whole webview stylesheet. Splitting it per
- * component under webview/styles/ is the follow-up. Open PRs #12 and #13 edit
- * this file, and PR #15 already proposes the split.
+ * webview/styles.css is an import list under the CSS limit, so it has no
+ * exception.
  */
-const exceptions = new Map([
-  [
-    "webview/styles.css",
-    "Monolithic webview stylesheet. Split per component under webview/styles/ in the follow-up.",
-  ],
-]);
+const exceptions = new Map();
 
 const linter = new Linter({ configType: "flat" });
 

@@ -21,7 +21,11 @@ observe execution. Parsing never writes skill files.
   `N3 -> N5 (Question)` express P/N relationships. Multiple outgoing arrows express
   a fork; labels belong to their stated arrows. Arrows to absent or duplicate IDs,
   unsupported arrow expressions, disconnected components and cycles give partial
-  coverage. Cyclic edges are omitted because the viewer lays out a DAG.
+  coverage. Cyclic edges are omitted because the viewer lays out a DAG. The
+  diagnosis names that cycle and the omitted edge, a duplicate step id and its
+  lines, an arrow to a missing id with the arrow's source line, and a self-loop
+  with its source line. A disconnected component stays partial and keeps the
+  generic unresolved sentence when none of those findings apply.
 - P/N diagram fences can state routes with visual markers: `parallel` and `barrier`
   create a fan-out and rejoin; a labeled `↓` or `┐` creates a labeled branch; `join`
   reconnects it. Ordinary rows form a sequence only inside such a marked diagram.
@@ -30,9 +34,48 @@ observe execution. Parsing never writes skill files.
 
 Examples, alternatives, choices, options, notes and appendix sections are excluded.
 Matching fence characters and lengths are respected; frontmatter retains its line
-positions but is not scanned for steps. Conditional/looping language or a
-"choose one" introduction prevents confident sequencing of the affected list.
-This conservative vocabulary is not a general natural-language parser.
+positions but is not scanned for steps. A leading byte-order mark is ignored, so
+the frontmatter name still applies on LF and CRLF files. When the closing `---`
+is missing, Flow warns and still reads the following instructions: the first
+heading, numbered item, P/N row, or fence ends the unclosed block. Invalid YAML
+is reported in the Flow diagnosis with the parser's file line when it has one.
+The message names `SKILL.md` and omits source excerpts. Frontmatter that is not
+a mapping, including a scalar or a list, warns as well. Any of these warnings keeps Flow confidence below
+high. Conditional/looping language or a "choose one" introduction prevents
+confident sequencing of the affected list. This conservative vocabulary is not a
+general natural-language parser.
+
+## Heading heuristic
+
+When none of the supported structures above match, level-2 and level-3 headings
+(`##` / `###`) are shown as unordered steps. Each step’s source range is that
+heading line. The diagnosis is `heuristic: headings, no order`. Edges from the
+source file to those steps are inferred; no edge between the steps states an
+execution order. Examples, alternatives, choices, options, notes, reference,
+and appendix headings are skipped, including headings nested under them.
+Headings in frontmatter and code fences are ignored, as are `#` titles and
+headings deeper than level 3. A document with no `##` or `###` heading keeps
+the empty diagnosis.
+
+A numbered list or P/N graph still wins, including when it is found in a later
+candidate than a heading-only file. The Flow banner shows this rewrite so an
+author can turn the same prose into an ordered flow:
+
+```text
+Prose headings are not a procedure. Number the same work to get an ordered flow.
+
+Before:
+## Gather
+Read the ticket and note the product area.
+
+## Classify
+Decide whether this is a bug or a question.
+
+After:
+## First Steps
+1. Gather: read the ticket and note the product area.
+2. Classify: decide whether this is a bug or a question.
+```
 
 ## Source and relationship evidence
 

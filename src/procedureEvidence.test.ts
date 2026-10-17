@@ -175,7 +175,10 @@ it("does not sequence a choose-one list or an inline example", () => {
   expect(choices.diagnosis.confidence).toBe("partial");
   expect(choices.graph.edges.filter(e => e.from.startsWith("step:"))).toHaveLength(0);
   const example = parse("## Instructions\nFor example:\n1. Red\n2. Blue\n");
-  expect(example.graph.nodes.filter(n => n.id.startsWith("step:"))).toHaveLength(0);
+  const exampleLabels = example.graph.nodes.filter(n => n.id.startsWith("step:")).map(n => n.label);
+  expect(exampleLabels).not.toContain("1. Red");
+  expect(exampleLabels).not.toContain("2. Blue");
+  expect(example.graph.edges.filter(e => e.from.startsWith("step:"))).toHaveLength(0);
 });
 it("omits cycles and ignores arrow examples instead of reporting full coverage", () => {
   const result = parse("See [workflow](workflow.md)", { "workflow.md": "# Workflow\nN1  Start\nN2  Finish\nN1 -> N2\nN2 -> N1\n## Examples\nN1 -> N2 (fake)\n" });

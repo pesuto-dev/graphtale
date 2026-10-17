@@ -1,0 +1,55 @@
+.react-flow__edge-path {
+  stroke: var(--edge);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.edge-inferred .react-flow__edge-path {
+  stroke-dasharray: 5 4;
+}
+
+.edge-pending .react-flow__edge-path {
+  stroke: var(--accent);
+}
+
+.react-flow__edge.edge-adjacent .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent) !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 6 6 !important;
+  animation: graphtale-edge-flow 1s linear infinite;
+}
+
+.react-flow__edge.edge-compact.edge-adjacent .react-flow__edge-path,
+.react-flow__edge.edge-compact.selected .react-flow__edge-path {
+  stroke-width: 3px !important;
+}
+
+@keyframes graphtale-edge-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Compact Procedure: thicker connectors, still on the quiet edge color. */
+.edge-compact .react-flow__edge-path {
+  stroke-width: 2.4;
+}
+
+.edge-compact.edge-inferred .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--muted) 35%, var(--fg));
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.edge-compact.edge-explicit .react-flow__edge-path {
+  stroke: color-mix(in srgb, var(--edge) 45%, var(--fg));
+  stroke-width: 2.5;
+}
+
+.edge-compact .react-flow__edge-text {
+  font-size: 10px;
+  font-weight: 650;
+  fill: var(--fg);
+}
+

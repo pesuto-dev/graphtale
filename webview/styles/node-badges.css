@@ -1,0 +1,22 @@
+.skill-node-meta {
+  padding-left: 34px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 16px;
+}
+
+.skill-node-meta .tag,
+.skill-node-meta .agent-badge {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  background: color-mix(in srgb, var(--k) 22%, transparent);
+  color: color-mix(in srgb, var(--fg) 80%, var(--k));
+}
+

@@ -1,7 +1,7 @@
 import * as os from "node:os";
 import * as path from "node:path";
 import type { CatalogSkill, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
-import { parseFrontmatter } from "./discover";
+import { parseFrontmatter } from "./frontmatter";
 import { INVENTORY_MAX_FILES, readRequiredText } from "./fileAccess";
 import { addDispatchedAgents, addMarkdownLinks, addSkillMentions } from "./skillLinks";
 import { ENTRY_ID, addFolderFiles, usesFor } from "./skillPaths";
