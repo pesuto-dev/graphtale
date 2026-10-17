@@ -131,6 +131,9 @@ describe("heading heuristic", () => {
     ]);
     expect(result.graph.edges.every((edge) => edge.relationship === "inferred")).toBe(true);
     expect(result.diagnosis.message).toContain("workflow.md");
+  });
+
+  it("names a heading-only linked file when it has no prose summary", () => {
     const headingsOnly = parse({
       "SKILL.md": "See [workflow](workflow.md).\n",
       "workflow.md": "## Gather\n## Classify\n",
@@ -172,6 +175,11 @@ describe("heading heuristic", () => {
     const message = { type: "graph" as const, graph: result.graph, procedure: result.graph, diagnosis: result.diagnosis, catalog: [], direction: "TB" as const };
     expect(result.diagnosis.rewriteExample).toBe(HEADING_REWRITE_EXAMPLE);
     expect(isHostToWebview(message)).toBe(true);
+  });
+
+  it("rejects a rewrite example that is not text", () => {
+    const result = parse({ "SKILL.md": "## Gather\nRead the ticket.\n" });
+    const message = { type: "graph" as const, graph: result.graph, procedure: result.graph, diagnosis: result.diagnosis, catalog: [], direction: "TB" as const };
     expect(isHostToWebview({ ...message, diagnosis: { ...result.diagnosis, rewriteExample: 1 } })).toBe(false);
   });
 });

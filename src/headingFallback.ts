@@ -7,10 +7,10 @@ import { buildFixPrompt } from "./shared/protocol";
 import { firstLine } from "./text";
 
 /** Diagnosis phrase for prose headings that do not state an execution order. */
-export const HEADING_HEURISTIC = "heuristic: headings, no order";
+export const HEADING_HEURISTIC: string = "heuristic: headings, no order";
 
 /** Short before/after authors can copy into a real numbered flow. */
-export const HEADING_REWRITE_EXAMPLE = [
+export const HEADING_REWRITE_EXAMPLE: string = [
   "Prose headings are not a procedure. Number the same work to get an ordered flow.",
   "",
   "Before:",
@@ -28,6 +28,16 @@ export const HEADING_REWRITE_EXAMPLE = [
 
 export type HeadingHit = { title: string; body: string; line: number };
 
+type HeadingParent = { level: number; excluded: boolean };
+
+type BuiltHeadingGraph = {
+  skill: HeadingArgs;
+  sourcePath: string;
+  sourceText: string;
+  hits: HeadingHit[];
+  warnings: string[];
+};
+
 type HeadingArgs = {
   skillName: string;
   skillRoot: string;
@@ -41,13 +51,13 @@ type HeadingArgs = {
 export function detectUnorderedHeadings(text: string): HeadingHit[] {
   const visible = visibleLines(text);
   const original = text.split(/\r?\n/);
-  const parents: Array<{ level: number; excluded: boolean }> = [];
+  const parents: HeadingParent[] = [];
   const hits: HeadingHit[] = [];
   for (let i = 0; i < visible.length; i++) {
     const heading = visible[i].match(HEADING);
     if (!heading) continue;
     const level = heading[1].length;
-    while (parents.length && parents.at(-1)!.level >= level) parents.pop();
+    closeParents(parents, level);
     const title = heading[2].replace(/\*\*/g, "").trim();
     const excluded = EXCLUDED.test(heading[2]) || parents.some((parent) => parent.excluded);
     parents.push({ level, excluded });
@@ -69,7 +79,7 @@ export function procedureFromHeadings(args: HeadingArgs): ProcedureResult | unde
     if (kept.length < hits.length) warnings.push(`Flow shows ${FLOW_MAX_STEPS} of ${hits.length} steps.`);
     const fileName = path.basename(candidate.path);
     return {
-      graph: buildGraph(args, candidate.path, candidate.text, kept, warnings),
+      graph: buildGraph({ skill: args, sourcePath: candidate.path, sourceText: candidate.text, hits: kept, warnings }),
       diagnosis: diagnosisFor(args.skillName, fileName, kept.length),
     };
   }
@@ -92,7 +102,16 @@ function diagnosisFor(skillName: string, fileName: string, count: number): Proce
   };
 }
 
-function buildGraph(args: HeadingArgs, sourcePath: string, sourceText: string, hits: HeadingHit[], warnings: string[]): SkillGraph {
+function closeParents(parents: HeadingParent[], level: number): void {
+  while (parents.length > 0) {
+    const parent = parents[parents.length - 1];
+    if (parent === undefined || parent.level < level) return;
+    parents.pop();
+  }
+}
+
+function buildGraph(input: BuiltHeadingGraph): SkillGraph {
+  const { skill, sourcePath, sourceText, hits, warnings } = input;
   const steps: SkillNode[] = hits.map((hit, index) => ({
     id: `step:${index + 1}`,
     label: hit.title,
@@ -103,17 +122,17 @@ function buildGraph(args: HeadingArgs, sourcePath: string, sourceText: string, h
     excerpt: hit.body.slice(0, 4000),
     uses: [],
   }));
-  const skillNode = skillDocumentNode(args.skillFile, args.skillText);
+  const skillNode = skillDocumentNode(skill.skillFile, skill.skillText);
   const edge = (from: string, to: string): SkillEdge => ({
     from, to, relationship: "inferred", inferred: true, confidence: "low",
   });
   const graph = {
-    skillId: `${args.skillName}-procedure`,
-    skillName: args.skillName,
-    rootPath: args.skillRoot,
+    skillId: `${skill.skillName}-procedure`,
+    skillName: skill.skillName,
+    rootPath: skill.skillRoot,
     warnings: [...new Set(warnings)],
   };
-  if (path.resolve(sourcePath) === path.resolve(args.skillFile)) {
+  if (path.resolve(sourcePath) === path.resolve(skill.skillFile)) {
     return { ...graph, nodes: [skillNode, ...steps], edges: steps.map((step) => edge("skill-md", step.id)) };
   }
   return {
