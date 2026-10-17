@@ -12,8 +12,10 @@ file labels, never file contents. YAML diagnostics do not dump source excerpts.
 Each recursive inventory visits at most 2,000 directory entries, descends eight
 levels and collects at most 400 files. The combined Catalog is capped at 400
 nodes, and Flow at 500 steps. A longer flow warns with the total and the number
-shown. Home/workspace discovery examines at most 2,000 entries per skill root
-and returns at most 400 skills. Limits produce warnings in the viewer. Symlinks are not followed during recursive inventory.
+shown.
+Home/workspace discovery examines at most 2,000 entries per skill root and
+returns at most 400 skills. Limits produce warnings in the viewer.
+Symlinks are not followed during recursive inventory.
 
 These limits exceed the small committed release samples while bounding accidental
 large inputs. They are guardrails, not a measured large-corpus performance claim.

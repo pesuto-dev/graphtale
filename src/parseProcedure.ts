@@ -46,11 +46,14 @@ export function parseProcedure(options: ParseProcedureOptions): ProcedureResult 
     const graph = wrapWithSource(buildStepGraph(skillName, skillRoot, detection, homedir), skillFile, skillText);
     graph.warnings = [...new Set(warnings)];
     const confidence = detection.relationships === "explicit" && !warnings.length ? "high" : "partial";
-    const detail = notes.length
-      ? notes.join(" ")
-      : detection.relationships === "explicit"
-        ? "The ordered steps are stated in the source."
-        : "Some relationships are unresolved or only part of the structure is supported.";
+    const structural = detection.findings ?? [];
+    const parts = [...notes];
+    if (detection.relationships === "unresolved" && structural.length === 0) {
+      parts.push("Some relationships are unresolved or only part of the structure is supported.");
+    } else if (parts.length === 0) {
+      parts.push("The ordered steps are stated in the source.");
+    }
+    const detail = parts.join(" ");
     return {
       graph,
       diagnosis: {

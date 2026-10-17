@@ -91,6 +91,43 @@ it("names an arrow whose target id is missing and the source line", () => {
   expect(stepEdges(result)).toEqual([["step:N1", "step:N2"]]);
 });
 
+it("keeps the generic unresolved sentence for a disconnected component", () => {
+  const result = parseWorkflow([
+    "# Workflow",
+    "",
+    "N1  Start",
+    "N2  Finish",
+    "N3  Other",
+    "N4  End",
+    "N1 -> N2",
+    "N3 -> N4",
+    "",
+  ].join("\n"));
+  const generic = "Some relationships are unresolved or only part of the structure is supported.";
+  expect(result.diagnosis.confidence).toBe("partial");
+  expect(result.diagnosis.message).toContain(generic);
+  expect(result.diagnosis.fixPrompt).toContain(generic);
+  expect(result.diagnosis.message).not.toMatch(/Cycle |Duplicate step id |Arrow to missing id |Self-loop /);
+  expect(stepEdges(result)).toEqual([["step:N1", "step:N2"], ["step:N3", "step:N4"]]);
+});
+
+it("names a self-loop and the line that states it", () => {
+  const result = parseWorkflow([
+    "# Workflow",
+    "",
+    "N1  Start",
+    "N2  Next",
+    "N1 -> N1",
+    "N1 -> N2",
+    "",
+  ].join("\n"));
+  const loop = "Self-loop N1 on line 5.";
+  expect(result.diagnosis.confidence).toBe("partial");
+  expect(result.diagnosis.message).toContain(loop);
+  expect(result.diagnosis.fixPrompt).toContain(loop);
+  expect(stepEdges(result)).toEqual([["step:N1", "step:N2"]]);
+});
+
 it("warns with the total and the shown count when the flow exceeds 500 steps", () => {
   expect(FLOW_MAX_STEPS).toBe(500);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "named-diagnosis-cap-"));
