@@ -52,6 +52,11 @@ button.active {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34%);
   height: 100%;
+  min-width: 0;
+}
+
+.app > * {
+  min-width: 0;
 }
 
 /* Browser preview: more room for the graph, less for the inspector. */
@@ -68,6 +73,8 @@ html.preview-harness .app {
 }
 
 .toolbar {
+  position: relative;
+  z-index: 4;
   padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--elevated) 88%, transparent);
@@ -89,6 +96,19 @@ html.preview-harness .app {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar > *,
+.title-row {
+  min-width: 0;
+}
+
+.title-row {
+  flex-wrap: wrap;
+}
+
+.toolbar h1 {
+  overflow-wrap: anywhere;
 }
 
 .view-tabs {
@@ -251,9 +271,11 @@ html.preview-harness .app {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 8px 10px 12px;
   border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 
 .inventory-head h2 {
@@ -267,6 +289,110 @@ html.preview-harness .app {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.search-field > label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.search-field input[type="search"] {
+  font: inherit;
+  color: var(--fg);
+  background: var(--fill);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+.search-field input[type="search"]::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.inventory-search {
+  padding: 10px 10px 0;
+}
+
+.inventory-search-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.go-to-step {
+  position: relative;
+  flex: 1 1 180px;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.go-to-step-control {
+  position: relative;
+}
+
+.go-to-step-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.go-to-step-option {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.go-to-step-option.is-active,
+.go-to-step-option:hover {
+  background: var(--fill);
+  border-color: var(--border);
+}
+
+.go-to-step-number {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.go-to-step-status {
+  margin: 0;
+  min-height: 1em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.go-to-step-status:empty {
+  display: none;
 }
 
 .inventory-body {
@@ -950,7 +1076,8 @@ html.preview-harness .app.inspector-closed {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 .inspector.collapsed { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
-button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible {
+button:focus-visible, summary:focus-visible, .react-flow__node:focus-visible,
+.search-field input[type="search"]:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 3px;
 }
 .main-procedure { display: flex; flex-direction: column; min-height: 0; }

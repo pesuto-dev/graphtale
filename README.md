@@ -80,8 +80,8 @@ The activity bar container **Graphtale** has one view, **Skills**
 
 Inside the webview:
 
-- **Flow** is the supported instruction graph. **Compact** packs that same graph into wrapped rows. Outside Compact, **Layout** switches between top-to-bottom and left-to-right. Nodes are not draggable and edges are not editable.
-- **Catalog** is a grouped file inventory. It does not imply execution order.
+- **Flow** is the supported instruction graph. **Go to step** finds a step by title or number, centers it, and opens the inspector. Ctrl or Cmd+F focuses that field. **Compact** packs the same graph into wrapped rows. Outside Compact, **Layout** switches between top-to-bottom and left-to-right. Nodes are not draggable and edges are not editable.
+- **Catalog** is a grouped file inventory. Search filters by file name, path, and description. It does not imply execution order.
 - The inspector shows the selected step’s source text. **Open instruction** (or **Open file** when the node has no instruction range) and **Open referenced resource** open the editor. Double-click a node to open its file.
 - A diagnosis banner appears when coverage is partial or missing. **Copy clarification prompt** copies text to the clipboard only when you ask. High confidence means the recognized structure has supported relationships. It is not a probability that every sentence was understood.
 

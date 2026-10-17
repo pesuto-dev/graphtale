@@ -18,6 +18,7 @@ import {
   initialGraphView,
 } from "./appConfig";
 import type { SkillFlowNode } from "./SkillNodeView";
+import { STEP_FOCUS_MS, stepFocusOptions } from "./findInView";
 import { vscode } from "./vscode";
 
 export function useViewState() {
@@ -45,21 +46,30 @@ export function useViewState() {
   const viewRef = useRef<GraphView>(initialGraphView());
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
+  const stepFocusRef = useRef<{ id: string; until: number } | null>(null);
   selectedIdRef.current = selectedId;
   viewRef.current = view;
+
+  // While a step focus is active, center that node. Otherwise fit the graph.
+  const fitVisible = useCallback(() => {
+    const focus = stepFocusRef.current;
+    if (focus && Date.now() < focus.until) {
+      void fitView(stepFocusOptions(focus.id));
+      return;
+    }
+    void fitView(compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS);
+  }, [fitView, compact]);
 
   // Fit the whole graph into the panel. Retried on the next frame and shortly
   // after so it lands once layout/size/expand measurements have settled.
   const scheduleFit = useCallback(() => {
-    const options = compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS;
-    const run = () => void fitView(options);
-    const frame = requestAnimationFrame(run);
-    const timer = setTimeout(run, 150);
+    const frame = requestAnimationFrame(() => fitVisible());
+    const timer = setTimeout(() => fitVisible(), 150);
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(timer);
     };
-  }, [fitView, compact]);
+  }, [fitVisible]);
 
   // Keep the whole graph visible after open/refresh, view/layout changes,
   // expand/collapse, or panel resize. Open/refresh remount via `fitNonce` in the
@@ -85,9 +95,7 @@ export function useViewState() {
       if (timer) {
         clearTimeout(timer);
       }
-      timer = setTimeout(() => {
-        void fitView(compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS);
-      }, 120);
+      timer = setTimeout(() => fitVisible(), 120);
     });
     observer.observe(el);
     return () => {
@@ -96,7 +104,7 @@ export function useViewState() {
       }
       observer.disconnect();
     };
-  }, [fitView, compact, view, fitNonce]);
+  }, [fitVisible, view, fitNonce]);
 
   function switchView(next: GraphView): void {
     setView(next);
@@ -126,6 +134,15 @@ export function useViewState() {
     setSelectedId(id);
     setInspectorOpen(true);
     vscode.postMessage({ type: "selectNode", nodeId: id });
+  }
+
+  function goToNode(id: string): void {
+    stepFocusRef.current = { id, until: Date.now() + STEP_FOCUS_MS };
+    selectNode(id);
+    const run = () => fitVisible();
+    requestAnimationFrame(run);
+    window.setTimeout(run, 220);
+    window.setTimeout(run, 480);
   }
 
   function toggleExpanded(id: string): void {
@@ -198,6 +215,7 @@ export function useViewState() {
     switchView,
     copyFixPrompt,
     selectNode,
+    goToNode,
     toggleExpanded,
     onNodeClick,
     onNodeDoubleClick,

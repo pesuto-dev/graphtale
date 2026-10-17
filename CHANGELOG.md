@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Catalog** search filters the inventory by file name, path, and description. An empty state appears when nothing matches.
+- **Go to step** in Flow finds a step by title or number, centers and selects that node, and opens the inspector. Ctrl or Cmd+F focuses the field.
+
 ### Changed
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.

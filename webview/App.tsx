@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Background, Controls } from "@xyflow/react";
@@ -5,6 +6,8 @@ import { diagnosisNeededWhen, diagnosisTitle } from "@shared/protocol";
 import { toFlow } from "./layout";
 import { toCompactFlow } from "./compactLayout";
 import { CatalogInventory } from "./CatalogInventory";
+import { isFindShortcut } from "./findInView";
+import { GoToStep } from "./GoToStep";
 import { Inspector } from "./Inspector";
 import { Legend } from "./Legend";
 import {
@@ -30,6 +33,25 @@ export function App() {
 function AppShell() {
   const state = useViewState();
   useHostMessages(state);
+  const catalogSearchRef = useRef<HTMLInputElement>(null);
+  const stepSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isFindShortcut(event)) {
+        return;
+      }
+      const input = state.view === "catalog" ? catalogSearchRef.current : stepSearchRef.current;
+      if (!input) {
+        return;
+      }
+      event.preventDefault();
+      input.focus();
+      input.select();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [state.view]);
 
   const showDiagnosis = state.view === "flow" && state.diagnosis.confidence !== "high";
   const display = state.view === "flow" ? state.procedure : state.graph;
@@ -80,6 +102,13 @@ function AppShell() {
           </p>
         </div>
         <div className="toolbar-stats">
+          {state.view === "flow" && display.nodes.length > 0 ? (
+            <GoToStep
+              nodes={display.nodes.filter((node) => flow.nodes.some((item) => item.id === node.id))}
+              inputRef={stepSearchRef}
+              onGo={state.goToNode}
+            />
+          ) : null}
           <span className="stat">
             <strong>{inventoryCount}</strong>
             {state.view === "flow" ? (state.compact ? "shown" : "steps") : "nodes"}
@@ -155,6 +184,7 @@ function AppShell() {
               selectedId={state.selectedId}
               onSelect={state.selectNode}
               onOpen={(nodeId) => vscode.postMessage({ type: "openFile", nodeId })}
+              searchRef={catalogSearchRef}
             />
           ) : display.nodes.length === 0 ? (
             <div className="flow-empty"><p>Review this skill’s files and instructions in Catalog.</p><button onClick={() => state.switchView("catalog")}>Open Catalog</button></div>
