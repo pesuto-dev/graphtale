@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Listing title is “Graphtale – Agent Skill Flow Viewer (SKILL.md)”. The description states the local, read-only SKILL.md flow and names Cursor, Claude Code, and Codex. Category `AI` is added next to `Visualization`. Keywords keep the previous terms and add the listing phrases (skill viewer, skill flow, claude code, codex skills, and related), deduplicated, 23 in total.
 - README header uses the new banner (icon, tagline, agent/skill/reference tags, and “by pesuto”).
 - The activity bar icon is the same three-node graph, drawn in `currentColor` and without the mascot badge.
-- Webview styles are split into tokens, toolbar, nodes, inventory, inspector, and high-contrast stylesheets.
+- Webview styles are split into tokens, toolbar, nodes-compact, nodes-detail, inventory, inspector, and high-contrast stylesheets.
 
 ## [0.1.1] - 2026-10-17
 

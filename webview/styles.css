@@ -1,6 +1,7 @@
 @import "./styles/tokens.css";
 @import "./styles/toolbar.css";
 @import "./styles/inventory.css";
-@import "./styles/nodes.css";
+@import "./styles/nodes-compact.css";
+@import "./styles/nodes-detail.css";
 @import "./styles/inspector.css";
 @import "./styles/high-contrast.css";
