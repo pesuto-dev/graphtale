@@ -72,6 +72,7 @@ export function parseProcedure(options: ParseProcedureOptions): ProcedureResult 
   );
 }
 
+/** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
 function finish(graph: SkillGraph, diagnosis: ProcedureDiagnosis, warnings: string[]): ProcedureResult {
   const notes = [...new Set([...(graph.warnings ?? []), ...warnings])];
   const extra = notes.filter((note) => !diagnosis.message.includes(note));
@@ -204,5 +205,5 @@ function firstLine(text: string): string {
   return (text.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith("#") && line !== "---") ?? "").slice(0, 220);
 }
 function readText(filePath: string): string {
-  return readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text;
+  return stripBom(readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text);
 }

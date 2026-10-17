@@ -44,6 +44,14 @@ description: this yaml is invalid
     expect(parseFrontmatter("---\n\n---\n")).toEqual({ name: "", description: "" });
   });
 
+  it("reports a YAML list with the same mapping warning", () => {
+    expect(parseFrontmatter("---\n- alpha\n- beta\n---\n")).toEqual({
+      name: "",
+      description: "",
+      error: "YAML frontmatter must be a mapping, not a single value.",
+    });
+  });
+
   it("keeps the name when a BOM precedes the fence, including CRLF", () => {
     const fields = { name: "bom-skill", description: "kept" };
     expect(parseFrontmatter("\uFEFF---\nname: bom-skill\ndescription: kept\n---\n")).toMatchObject(fields);

@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { isScalar, parseDocument, type YAMLError } from "yaml";
+import { isMap, parseDocument, type YAMLError } from "yaml";
 import { frontmatterNeverCloses, stripBom } from "./text";
 import { readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
 import type { CatalogSkill } from "./shared/protocol";
@@ -166,12 +166,10 @@ export function parseFrontmatter(text: string): Frontmatter {
     return { name: "", description: "", error: formatYamlError(doc.errors[0], 2) };
   }
   if (doc.contents == null) return { name: "", description: "" };
-  if (isScalar(doc.contents)) {
+  if (!isMap(doc.contents)) {
     return { name: "", description: "", error: "YAML frontmatter must be a mapping, not a single value." };
   }
-  const parsed: unknown = doc.toJS();
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { name: "", description: "" };
-  const record = parsed as Record<string, unknown>;
+  const record = doc.toJS() as Record<string, unknown>;
   return {
     name: typeof record.name === "string" ? record.name : "",
     description: typeof record.description === "string" ? record.description : "",
