@@ -1,8 +1,10 @@
 # Preview release checklist
 
-The preview route is a GitHub Release VSIX first. Marketplace publication is a
-separate decision after installation smoke testing; no publication command is
-part of this repository's package script.
+The release workflow builds the VSIX, publishes it to Open VSX, publishes that
+same VSIX to the Visual Studio Marketplace when the `VSCE_PAT` repository
+secret is set, and attaches it to the GitHub Release. A missing `VSCE_PAT` or
+a Marketplace error does not block Open VSX or the GitHub Release. `npm run
+package` does not publish.
 
 Before a release, run the checks in the contributor guide, inspect the VSIX
 contents, and complete [the smoke test](smoke-test.md) in a clean profile. Use
