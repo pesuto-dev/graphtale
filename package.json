@@ -52,23 +52,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": [
-    "dist/extension.js",
-    "dist/webview/",
-    "assets/icon.png",
-    "assets/icon.svg",
-    "assets/marketplace/*.png",
-    "docs/install.md",
-    "docs/parser-coverage.md",
-    "docs/skill-locations.md",
-    "docs/file-limits.md",
-    "LICENSE",
-    "NOTICE",
-    "TRADEMARK.md",
-    "THIRD_PARTY_NOTICES.md",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md"
-  ],
   "engines": {
     "vscode": "^1.125.0"
   },

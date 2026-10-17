@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- README demo of opening a `SKILL.md`, showing Flow, clicking a step, and highlighting that source line in the editor (`docs/media/demo.gif`). `.vscodeignore` keeps `docs/media` out of the VSIX.
+
 ### Changed
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.

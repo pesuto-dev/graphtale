@@ -71,10 +71,11 @@ Users install a `.vsix` (`npm run package`, which runs `vscode:prepublish`).
 `prepublishOnly` runs the same compile so a future `npm publish` would pack the
 built extension as well. This repository does not publish on its own.
 
-`package.json` `files` is the ship list for both the npm tarball and the VSIX.
-`vsce` refuses to combine that list with a `.vscodeignore` file, so there is
-no separate ignore file. The host source map stays out of the package. When
-you change what ships, check both outputs:
+`.vscodeignore` chooses the VSIX contents. `vsce` refuses to combine that file
+with a `files` property in `package.json`, so the npm tarball uses `.npmignore`
+for the same set. `docs/media/` is the README demo and is left out of both.
+The host source map stays out of the package. When you change what ships, check
+both outputs:
 
 ```bash
 npm run compile

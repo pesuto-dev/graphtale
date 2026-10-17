@@ -8,6 +8,10 @@
   </a>
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pesuto-dev/graphtale/main/docs/media/demo.gif" alt="Open a SKILL.md, show Graphtale Flow, click a step, and the source line is highlighted in the editor" width="800">
+</p>
+
 # Graphtale
 
 Graphtale shows a `SKILL.md` as a step-by-step flow linked to source lines. It
@@ -95,8 +99,9 @@ This package does not emit `.d.ts` files and does not declare `exports` or
 `types`, because there is no supported import API. The host/webview message
 shapes in `src/shared/protocol.ts` are an internal contract for this extension.
 
-`npm publish` would run `prepublishOnly` (`npm run compile`) and pack the
-`files` whitelist. Publication is a maintainer step. It is not part of CI.
+`npm publish` would run `prepublishOnly` (`npm run compile`) and pack what
+`.npmignore` allows. The VSIX uses `.vscodeignore` instead, and that file
+leaves `docs/media` out of the package. Publication is a maintainer step. It is not part of CI.
 
 ## What the parser understands
 

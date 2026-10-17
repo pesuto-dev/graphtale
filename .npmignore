@@ -1,0 +1,23 @@
+# npm tarball ship list. Same set as .vscodeignore, including the built dist.
+*
+!*/
+!/package.json
+!/README.md
+!/CHANGELOG.md
+!/CONTRIBUTING.md
+!/LICENSE
+!/NOTICE
+!/TRADEMARK.md
+!/THIRD_PARTY_NOTICES.md
+!/assets/icon.png
+!/assets/icon.svg
+!/assets/marketplace/*.png
+!/dist/extension.js
+!/dist/webview/**
+!/docs/file-limits.md
+!/docs/install.md
+!/docs/parser-coverage.md
+!/docs/skill-locations.md
+
+# README demo. Not part of the published tarball.
+docs/media/
