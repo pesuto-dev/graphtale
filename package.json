@@ -1,7 +1,7 @@
 {
   "name": "graphtale",
-  "displayName": "Graphtale - Agent Skill Flow",
-  "description": "Read-only Flow and Catalog views for reviewing an Agent Skill from its existing files.",
+  "displayName": "Graphtale – Agent Skill Flow Viewer (SKILL.md)",
+  "description": "See your SKILL.md as a step-by-step flow linked to source lines. Local, read-only, no LLM. Works with Cursor, Claude Code and Codex skills.",
   "version": "0.1.1",
   "publisher": "pesuto",
   "author": {
@@ -21,20 +21,29 @@
   "license": "Apache-2.0",
   "icon": "assets/icon.png",
   "galleryBanner": {
-    "color": "#1a2332",
+    "color": "#0F0F0E",
     "theme": "dark"
   },
   "keywords": [
+    "agent skills",
+    "SKILL.md",
+    "skill viewer",
+    "skill preview",
+    "skill flow",
+    "claude skills",
+    "claude code",
+    "cursor skills",
+    "codex skills",
+    "ai agents",
+    "workflow",
+    "flowchart",
+    "visualization",
+    "markdown",
+    "review",
     "skill",
     "skills",
-    "agent skills",
     "agent-skills",
-    "SKILL.md",
-    "skill.md",
-    "claude skills",
-    "cursor skills",
     "flow",
-    "visualization",
     "cursor",
     "claude",
     "codex",
@@ -64,7 +73,8 @@
     "vscode": "^1.125.0"
   },
   "categories": [
-    "Visualization"
+    "Visualization",
+    "AI"
   ],
   "activationEvents": [
     "onStartupFinished"

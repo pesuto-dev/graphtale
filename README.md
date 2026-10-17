@@ -2,14 +2,18 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.125.0-007ACC?logo=visualstudiocode&logoColor=white)](https://code.visualstudio.com/)
 
-<p><a href="https://pesuto.dev/">a pesuto tool</a></p>
+<p align="center">
+  <a href="https://pesuto.dev/">
+    <img src="https://raw.githubusercontent.com/pesuto-dev/graphtale/main/assets/readme-header.png" alt="graphtale — See your SKILL.md as a step-by-step flow. Local, read-only, no LLM. Tags: agent, skill, reference. by pesuto" width="1200">
+  </a>
+</p>
 
 # Graphtale
 
-Graphtale is a read-only Cursor and VS Code extension for visual review of an
-Agent Skill from the files you already wrote. It shows supported instruction
-structure and the files a skill refers to. It does not edit, install, or
-execute the skill, and it does not call a backend.
+Graphtale shows a `SKILL.md` as a step-by-step flow linked to source lines. It
+is a local, read-only Cursor and VS Code extension for skills used by Cursor,
+Claude Code, and Codex. It does not edit, install, or execute the skill, and
+it does not call a backend or an LLM.
 
 ## Install
 
