@@ -19,7 +19,9 @@ workspace APIs and does not require an account, backend, network service, or
 API key. It does not execute skills or modify them.
 
 The package targets VS Code `^1.125.0` and compatible Cursor builds. The parser
-supports the structures listed in [parser coverage](parser-coverage.md); an
-empty or partial diagnosis is expected for prose-only or ambiguous skills.
+supports the structures listed in [parser coverage](parser-coverage.md). Prose
+with only `##` or `###` headings is an unordered partial flow. An empty
+diagnosis remains for prose with no such headings, and a partial diagnosis
+remains for ambiguous skills.
 This is a hobby project with community support expectations rather than a
 guaranteed production support channel.

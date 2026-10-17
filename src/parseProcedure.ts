@@ -2,6 +2,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS } from "./fileAccess";
 import { parseFrontmatter } from "./frontmatter";
+import { procedureFromHeadings } from "./headingFallback";
 import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillGraph } from "./shared/protocol";
 import { emptyDiagnosis } from "./shared/protocol";
 import { flowDiagnosis, limitFlowSteps } from "./procedureDiagnosis";
@@ -110,6 +111,15 @@ function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): voi
 }
 
 function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
+  const headings = procedureFromHeadings({
+    skillName: loaded.skillName,
+    skillRoot: loaded.skillRoot,
+    skillFile: loaded.skillFile,
+    skillText: loaded.skillText,
+    candidates: loaded.candidates,
+    warnings: loaded.warnings,
+  });
+  if (headings) return finish(headings.graph, headings.diagnosis, loaded.warnings);
   if (!loaded.linked) {
     const graph: SkillGraph = {
       skillId: `${loaded.skillName}-procedure`,

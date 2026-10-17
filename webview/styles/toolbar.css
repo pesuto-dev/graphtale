@@ -116,6 +116,11 @@
   overflow-wrap: anywhere;
 }
 
+.diagnosis-banner-example {
+  max-height: none;
+  color: var(--fg);
+}
+
 .fix-prompt-btn {
   flex-shrink: 0;
   border-color: var(--accent);

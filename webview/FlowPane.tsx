@@ -79,6 +79,9 @@ function DiagnosisBanner({
         <strong>{diagnosisTitle(diagnosis.confidence)}</strong>
         <p>{diagnosis.message}</p>
         <p className="diagnosis-hint">{diagnosisNeededWhen(diagnosis.confidence)}</p>
+        {diagnosis.rewriteExample ? (
+          <pre className="fix-prompt-text diagnosis-banner-example">{diagnosis.rewriteExample}</pre>
+        ) : null}
         {showPrompt ? (
           <pre className="fix-prompt-text" tabIndex={0}>
             {diagnosis.fixPrompt}
