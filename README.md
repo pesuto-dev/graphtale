@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pesuto-dev/graphtale/main/docs/media/demo.gif" alt="Open a SKILL.md, show Graphtale Flow, click a step, and the source line is highlighted in the editor" width="800">
+  <img src="docs/media/demo.gif" alt="Open a SKILL.md, show Graphtale Flow, click a step, and the source line is highlighted in the editor" width="800">
 </p>
 
 # Graphtale

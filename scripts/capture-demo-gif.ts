@@ -1,8 +1,11 @@
 /**
  * Record docs/media/demo.gif from a running VS Code window with Graphtale installed.
  *
- * The workbench must already be listening on CDP_URL (default http://127.0.0.1:9222)
- * under DISPLAY (default :99), with ffmpeg and xdotool available:
+ * The script writes the example skill to {os.tmpdir()}/graphtale-demo-ws
+ * (.cursor/skills/review-change/SKILL.md). Open that folder in the workbench
+ * before recording. The workbench must already be listening on CDP_URL
+ * (default http://127.0.0.1:9222) under DISPLAY (default :99), with ffmpeg
+ * and xdotool available:
  *   DISPLAY=:99 npx tsx scripts/capture-demo-gif.ts
  * The clip is a README asset. .vscodeignore keeps docs/media out of the VSIX.
  */
@@ -50,7 +53,9 @@ function run(cmd: string, args: string[]): void {
 
 async function point(locator: Locator): Promise<void> {
   const box = await locator.boundingBox();
-  if (!box) return;
+  if (!box) {
+    throw new Error("Recording target is not visible: bounding box is missing.");
+  }
   const x = Math.round(box.x + box.width / 2);
   const y = Math.round(box.y + box.height / 2);
   spawn("xdotool", ["mousemove", "--sync", String(x), String(y)], {
