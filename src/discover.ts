@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { parse as parseYaml } from "yaml";
+import { isScalar, parseDocument, type YAMLError } from "yaml";
+import { frontmatterNeverCloses, stripBom } from "./text";
 import { readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
 import type { CatalogSkill } from "./shared/protocol";
 
@@ -152,28 +153,42 @@ export function readFrontmatter(skillFile: string): Frontmatter {
 }
 
 export function parseFrontmatter(text: string): Frontmatter {
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const source = stripBom(text);
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) {
+    if (frontmatterNeverCloses(source)) {
+      return { name: "", description: "", error: "Frontmatter is missing its closing ---." };
+    }
     return { name: "", description: "" };
   }
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(match[1]);
-  } catch {
-    return {
-      name: "",
-      description: "",
-      error: "Invalid YAML frontmatter. Check its syntax in SKILL.md.",
-    };
+  const doc = parseDocument(match[1]);
+  if (doc.errors.length > 0) {
+    return { name: "", description: "", error: formatYamlError(doc.errors[0], 2) };
   }
-  if (!parsed || typeof parsed !== "object") {
-    return { name: "", description: "" };
+  if (doc.contents == null) return { name: "", description: "" };
+  if (isScalar(doc.contents)) {
+    return { name: "", description: "", error: "YAML frontmatter must be a mapping, not a single value." };
   }
+  const parsed: unknown = doc.toJS();
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { name: "", description: "" };
   const record = parsed as Record<string, unknown>;
   return {
     name: typeof record.name === "string" ? record.name : "",
     description: typeof record.description === "string" ? record.description : "",
   };
+}
+
+/** Parser line numbers are relative to the YAML body, which starts after the opening fence. */
+function formatYamlError(error: YAMLError, bodyStartLine: number): string {
+  const yamlLine = error.linePos?.[0]?.line;
+  const fileLine = typeof yamlLine === "number" ? bodyStartLine + yamlLine - 1 : undefined;
+  const detail = error.message
+    .split("\n")[0]
+    .replace(/:?\s*at line \d+, column \d+:?\s*$/i, "")
+    .replace(/\.+$/, "")
+    .trim();
+  const reason = detail || "Check its syntax in SKILL.md";
+  return fileLine ? `Invalid YAML frontmatter at line ${fileLine}: ${reason}.` : `Invalid YAML frontmatter: ${reason}.`;
 }
 
 function isDirectory(dir: string): boolean {

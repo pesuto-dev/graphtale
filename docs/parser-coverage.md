@@ -30,9 +30,16 @@ observe execution. Parsing never writes skill files.
 
 Examples, alternatives, choices, options, notes and appendix sections are excluded.
 Matching fence characters and lengths are respected; frontmatter retains its line
-positions but is not scanned for steps. Conditional/looping language or a
-"choose one" introduction prevents confident sequencing of the affected list.
-This conservative vocabulary is not a general natural-language parser.
+positions but is not scanned for steps. A leading byte-order mark is ignored, so
+the frontmatter name still applies on LF and CRLF files. When the closing `---`
+is missing, Flow warns and still reads the following instructions: the first
+heading, numbered item, P/N row, or fence ends the unclosed block. Invalid YAML
+is reported in the Flow diagnosis with the parser's file line when it has one.
+The message names `SKILL.md` and omits source excerpts. Frontmatter that is only
+a scalar value warns as well. Any of these warnings keeps Flow confidence below
+high. Conditional/looping language or a "choose one" introduction prevents
+confident sequencing of the affected list. This conservative vocabulary is not a
+general natural-language parser.
 
 ## Source and relationship evidence
 

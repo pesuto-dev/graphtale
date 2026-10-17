@@ -17,7 +17,7 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter("# just a title\n")).toEqual({ name: "", description: "" });
   });
 
-  it("does not throw on malformed YAML and reports an error", () => {
+  it("does not throw on malformed YAML and reports the file line", () => {
     const result = parseFrontmatter(`---
 name: [broken
 description: this yaml is invalid
@@ -27,7 +27,27 @@ description: this yaml is invalid
 `);
     expect(result.name).toBe("");
     expect(result.description).toBe("");
-    expect(result.error).toMatch(/YAML|Nesting|Unexpected|flow/i);
+    expect(result.error).toMatch(/Invalid YAML frontmatter at line 3/);
+    expect(result.error).not.toMatch(/name: \[broken/);
+  });
+
+  it("reports a missing closing fence", () => {
+    const result = parseFrontmatter("---\nname: unclosed\ndescription: missing\n\n## Instructions\n1. Read\n");
+    expect(result.error).toMatch(/missing its closing ---/);
+    expect(result.name).toBe("");
+  });
+
+  it("reports a scalar document and leaves an empty document alone", () => {
+    for (const body of ["just a string", "42", "true", "null"]) {
+      expect(parseFrontmatter(`---\n${body}\n---\n`).error).toMatch(/mapping, not a single value/);
+    }
+    expect(parseFrontmatter("---\n\n---\n")).toEqual({ name: "", description: "" });
+  });
+
+  it("keeps the name when a BOM precedes the fence, including CRLF", () => {
+    const fields = { name: "bom-skill", description: "kept" };
+    expect(parseFrontmatter("\uFEFF---\nname: bom-skill\ndescription: kept\n---\n")).toMatchObject(fields);
+    expect(parseFrontmatter("\uFEFF---\r\nname: bom-skill\r\ndescription: kept\r\n---\r\n")).toMatchObject(fields);
   });
 });
 

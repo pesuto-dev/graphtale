@@ -1,4 +1,5 @@
 import type { SourceRange } from "./shared/protocol";
+import { frontmatterNeverCloses, stripBom } from "./text";
 
 export type DetectedStep = { display: string; title: string; body: string; source: SourceRange; resource?: string };
 export type DetectedLink = { from: number; to: number; label?: string; source: SourceRange };
@@ -14,15 +15,28 @@ const CONDITIONAL = /\b(if|otherwise|unless|parallel|concurrently|alternatively|
 const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
 const NUMBERED = /^(\d+[a-z]?)\.\s+(.+)$/i;
 
+/** A heading, numbered item, P/N row, or fence: the body after an unclosed frontmatter block. */
+function instructionStart(line: string): boolean {
+  return /^(?:#{2,6}\s+\S|\d+[a-z]?\.\s+\S|\s*(?:P|N\d+[a-z]?)\s+\S| {0,3}(?:`{3,}|~{3,}))/.test(line);
+}
+
 /** Keep original line offsets; recognize matching fence characters and lengths. */
 function visibleLines(text: string, pn = false): string[] {
+  const source = stripBom(text);
+  const opened = source.startsWith("---\n") || source.startsWith("---\r\n");
+  const closed = opened && !frontmatterNeverCloses(source);
   let fence: { char: string; length: number; allow: boolean } | undefined;
-  let frontmatter = text.startsWith("---\n") || text.startsWith("---\r\n");
+  let frontmatter = opened;
   let excluded = false;
-  return text.split(/\r?\n/).map((line, index) => {
+  return source.split(/\r?\n/).map((line, index) => {
     if (frontmatter) {
-      if (index > 0 && /^(---|\.\.\.)\s*$/.test(line)) frontmatter = false;
-      return "";
+      if (index > 0 && /^(---|\.\.\.)\s*$/.test(line)) {
+        frontmatter = false;
+        return "";
+      }
+      // A missing closer used to blank every following line. Keep the instruction that ends the block.
+      if (closed || index === 0 || !instructionStart(line)) return "";
+      frontmatter = false;
     }
     const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fence) {
