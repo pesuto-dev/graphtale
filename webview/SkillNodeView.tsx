@@ -8,8 +8,6 @@ export type SkillNodeData = SkillNode & {
   expanded: boolean;
   /** Compact Flow overview chip (no expand / short chrome). */
   compact?: boolean;
-  /** Full name for the compact chip. The visible label may be shortened. */
-  accessibleName?: string;
 };
 
 /** Name exposed to assistive tech. Compact chips truncate the visible label. */
@@ -63,9 +61,8 @@ export function SkillNodeView({
     sourcePosition ?? (direction === "LR" ? Position.Right : Position.Bottom);
 
   if (compact) {
-    const accessibleName = data.accessibleName ?? compactAccessibleName(data.kind, data.label);
     return (
-      <div className={classes} aria-label={accessibleName}>
+      <div className={classes}>
         <Handle type="target" id="in-left" position={Position.Left} />
         <Handle type="target" id="in-top" position={Position.Top} />
         <Handle type="target" id="in-bottom" position={Position.Bottom} />

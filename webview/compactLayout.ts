@@ -78,7 +78,6 @@ export function toCompactFlow(
         direction: "LR",
         expanded: false,
         compact: true,
-        accessibleName,
       },
       sourcePosition,
       targetPosition,

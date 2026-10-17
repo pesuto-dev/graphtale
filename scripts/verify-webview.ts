@@ -2,9 +2,29 @@
 import * as path from "node:path";
 import * as fs from "node:fs";
 import assert from "node:assert/strict";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { parseSkill } from "../src/parseSkill";
 import { parseProcedure } from "../src/parseProcedure";
+
+async function tabUntilGraph(page: Page): Promise<string[]> {
+  const visited: string[] = [];
+  for (let step = 0; step < 12; step += 1) {
+    await page.keyboard.press("Tab");
+    const place = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) return "none";
+      if (el.closest(".inspector")) return "inspector";
+      if (el.closest(".react-flow__edge")) return "edge";
+      if (el.closest(".react-flow__controls")) return "controls";
+      if (el.closest(".react-flow__node")) return "graph";
+      if (el.closest(".toolbar")) return "toolbar";
+      return "other";
+    });
+    visited.push(place);
+    if (place === "graph") break;
+  }
+  return visited;
+}
 
 type PreviewMessage = { type?: string; nodeId?: string; target?: string };
 async function main() {
@@ -49,24 +69,8 @@ try {
   assert.equal(await flowTab.getAttribute('aria-selected'), 'true');
   await page.locator('.react-flow__node').first().waitFor();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  const visited: string[] = [];
-  let onStep = false;
-  for (let i = 0; i < 12 && !onStep; i++) {
-    await page.keyboard.press('Tab');
-    const place = await page.evaluate(() => {
-      const el = document.activeElement;
-      if (!el) return 'none';
-      if (el.closest('.inspector')) return 'inspector';
-      if (el.closest('.react-flow__edge')) return 'edge';
-      if (el.closest('.react-flow__controls')) return 'controls';
-      if (el.closest('.react-flow__node')) return 'graph';
-      if (el.closest('.toolbar')) return 'toolbar';
-      return 'other';
-    });
-    visited.push(place);
-    onStep = place === 'graph';
-  }
-  assert.equal(onStep, true, `Tab reaches a step before the inspector: ${visited.join(' ')}`);
+  const visited = await tabUntilGraph(page);
+  assert.equal(visited.at(-1), 'graph', `Tab reaches a step before the inspector: ${visited.join(' ')}`);
   assert.equal(visited.includes('edge'), false);
   assert.equal(visited.includes('inspector'), false);
   assert.equal(visited[0], 'toolbar');
@@ -74,12 +78,8 @@ try {
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  onStep = false;
-  for (let i = 0; i < 12 && !onStep; i++) {
-    await page.keyboard.press('Tab');
-    onStep = await page.evaluate(() => !!document.activeElement?.closest('.react-flow__node'));
-  }
-  assert.equal(onStep, true);
+  const spaced = await tabUntilGraph(page);
+  assert.equal(spaced.at(-1), 'graph');
   await page.keyboard.press(' ');
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Hide inspector', exact: true }).click();
