@@ -10,8 +10,10 @@ export type ParseProcedureOptions = { skillRoot: string; catalog: CatalogSkill[]
 /** @deprecated use ParseProcedureOptions */
 export type ParsePipelineOptions = ParseProcedureOptions;
 
+import { skillDocumentNode, procedureSourceNode } from "./flowNodes";
 import { procedureFromHeadings } from "./headingFallback";
 import { detectSteps, type Detection } from "./procedureDetection";
+import { firstLine, stripFrontmatter } from "./text";
 
 const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
 
@@ -103,20 +105,13 @@ function buildStepGraph(skillName: string, skillRoot: string, detection: Detecti
 function wrapWithSource(graph: SkillGraph, skillFile: string, skillText: string): SkillGraph {
   const sourcePath = graph.nodes[0]?.source?.path;
   if (!sourcePath || !graph.nodes[0]) return graph;
-  const skillNode: SkillNode = {
-    id: "skill-md", label: "SKILL.md", kind: "skill", path: skillFile,
-    source: { path: skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(skillText)), uses: [], isEntry: true,
-  };
+  const skillNode = skillDocumentNode(skillFile, skillText);
   for (const node of graph.nodes) node.isEntry = false;
   if (path.resolve(sourcePath) === path.resolve(skillFile)) {
     return { ...graph, nodes: [skillNode, ...graph.nodes], edges: [{ from: "skill-md", to: graph.nodes[0].id, label: "source", relationship: "inferred", inferred: true }, ...graph.edges] };
   }
   const sourceText = readText(sourcePath);
-  const sourceNode: SkillNode = {
-    id: "procedure-source", label: path.basename(sourcePath), kind: "reference", path: sourcePath,
-    source: { path: sourcePath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(sourceText)) || "Flow source",
-    excerpt: sourceText.slice(0, 4000), uses: [],
-  };
+  const sourceNode = procedureSourceNode(sourcePath, sourceText);
   return {
     ...graph, nodes: [skillNode, sourceNode, ...graph.nodes],
     edges: [
@@ -132,7 +127,7 @@ function partialResult(skillName: string, skillRoot: string, skillFile: string, 
     graph: {
       skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot,
       nodes: [
-        { id: "skill-md", label: "SKILL.md", kind: "skill", path: skillFile, source: { path: skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(skillText)), uses: [], isEntry: true },
+        skillDocumentNode(skillFile, skillText),
         { id: "workflow", label: path.basename(linkedPath), kind: "reference", path: linkedPath, source: { path: linkedPath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(linkedText)), excerpt: linkedText.slice(0, 4000), uses: [] },
       ],
       edges: [{ from: "skill-md", to: "workflow", label: "workflow", confidence: "low", relationship: "unresolved" }],
@@ -185,12 +180,6 @@ function kindForResource(resource?: string): SkillNode["kind"] {
 }
 function plainTitle(value: string): string {
   return value.replace(/\*\*/g, "").trim();
-}
-function firstLine(text: string): string {
-  return (text.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith("#") && line !== "---") ?? "").slice(0, 220);
-}
-function stripFrontmatter(text: string): string {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 }
 function readText(filePath: string): string {
   return readTextFile(filePath, INPUT_READ_LIMIT_BYTES).text;

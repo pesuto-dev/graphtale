@@ -1,8 +1,10 @@
 import * as path from "node:path";
 import { FLOW_MAX_STEPS } from "./fileAccess";
-import { visibleLines } from "./procedureDetection";
+import { skillDocumentNode, procedureSourceNode } from "./flowNodes";
+import { EXCLUDED, HEADING, visibleLines } from "./procedureDetection";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
+import { firstLine } from "./text";
 
 /** Diagnosis phrase for prose headings that do not state an execution order. */
 export const HEADING_HEURISTIC = "heuristic: headings, no order";
@@ -23,9 +25,6 @@ export const HEADING_REWRITE_EXAMPLE = [
   "1. Gather: read the ticket and note the product area.",
   "2. Classify: decide whether this is a bug or a question.",
 ].join("\n");
-
-const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
-const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
 
 export type HeadingHit = { title: string; body: string; line: number };
 
@@ -67,7 +66,7 @@ export function procedureFromHeadings(args: HeadingArgs): ProcedureResult | unde
     if (!hits.length) continue;
     const warnings = [...args.warnings];
     const kept = hits.slice(0, FLOW_MAX_STEPS);
-    if (kept.length < hits.length) warnings.push(`Flow stopped after ${FLOW_MAX_STEPS} steps.`);
+    if (kept.length < hits.length) warnings.push(`Flow shows ${FLOW_MAX_STEPS} of ${hits.length} steps.`);
     const fileName = path.basename(candidate.path);
     return {
       graph: buildGraph(args, candidate.path, candidate.text, kept, warnings),
@@ -104,57 +103,25 @@ function buildGraph(args: HeadingArgs, sourcePath: string, sourceText: string, h
     excerpt: hit.body.slice(0, 4000),
     uses: [],
   }));
-  const skillNode: SkillNode = {
-    id: "skill-md",
-    label: "SKILL.md",
-    kind: "skill",
-    path: args.skillFile,
-    source: { path: args.skillFile, startLine: 1, endLine: 1 },
-    summary: firstLine(stripFrontmatter(args.skillText)),
-    uses: [],
-    isEntry: true,
-  };
-  const headingEdge = (from: string, to: string): SkillEdge => ({
+  const skillNode = skillDocumentNode(args.skillFile, args.skillText);
+  const edge = (from: string, to: string): SkillEdge => ({
     from, to, relationship: "inferred", inferred: true, confidence: "low",
   });
-  const sameFile = path.resolve(sourcePath) === path.resolve(args.skillFile);
-  if (sameFile) {
-    return {
-      skillId: `${args.skillName}-procedure`,
-      skillName: args.skillName,
-      rootPath: args.skillRoot,
-      nodes: [skillNode, ...steps],
-      edges: steps.map((step) => headingEdge("skill-md", step.id)),
-      warnings: [...new Set(warnings)],
-    };
-  }
-  const sourceNode: SkillNode = {
-    id: "procedure-source",
-    label: path.basename(sourcePath),
-    kind: "reference",
-    path: sourcePath,
-    source: { path: sourcePath, startLine: 1, endLine: 1 },
-    summary: firstLine(stripFrontmatter(sourceText)) || "Flow source",
-    excerpt: sourceText.slice(0, 4000),
-    uses: [],
-  };
-  return {
+  const graph = {
     skillId: `${args.skillName}-procedure`,
     skillName: args.skillName,
     rootPath: args.skillRoot,
-    nodes: [skillNode, sourceNode, ...steps],
-    edges: [
-      { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
-      ...steps.map((step) => headingEdge("procedure-source", step.id)),
-    ],
     warnings: [...new Set(warnings)],
   };
-}
-
-function firstLine(text: string): string {
-  return (text.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith("#") && line !== "---") ?? "").slice(0, 220);
-}
-
-function stripFrontmatter(text: string): string {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+  if (path.resolve(sourcePath) === path.resolve(args.skillFile)) {
+    return { ...graph, nodes: [skillNode, ...steps], edges: steps.map((step) => edge("skill-md", step.id)) };
+  }
+  return {
+    ...graph,
+    nodes: [skillNode, procedureSourceNode(sourcePath, sourceText), ...steps],
+    edges: [
+      { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
+      ...steps.map((step) => edge("procedure-source", step.id)),
+    ],
+  };
 }

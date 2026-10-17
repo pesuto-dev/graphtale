@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { FLOW_MAX_STEPS } from "./fileAccess";
 import { HEADING_HEURISTIC, HEADING_REWRITE_EXAMPLE } from "./headingFallback";
 import { parseProcedure } from "./parseProcedure";
 import { isHostToWebview } from "./shared/protocol";
@@ -151,7 +152,7 @@ describe("heading heuristic", () => {
     const lines = Array.from({ length: 501 }, (_, index) => `## Step ${index + 1}`);
     const result = parse({ "SKILL.md": `${lines.join("\n")}\n` });
     expect(steps(result)).toHaveLength(500);
-    expect(result.graph.warnings).toContain("Flow stopped after 500 steps.");
+    expect(result.graph.warnings).toContain(`Flow shows ${FLOW_MAX_STEPS} of ${FLOW_MAX_STEPS + 1} steps.`);
     expect(result.diagnosis.message).toContain(HEADING_HEURISTIC);
     expect(result.diagnosis.confidence).toBe("partial");
   });
@@ -167,45 +168,10 @@ describe("heading heuristic", () => {
   });
 
   it("accepts the rewrite example on a host graph message", () => {
-    const node = {
-      id: "step:1",
-      label: "Gather",
-      kind: "reference",
-      path: "/tmp/skill/SKILL.md",
-      summary: "Read the ticket.",
-      uses: [],
-      source: { path: "/tmp/skill/SKILL.md", startLine: 8, endLine: 8 },
-    };
-    const skill = {
-      id: "skill-md",
-      label: "SKILL.md",
-      kind: "skill",
-      path: "/tmp/skill/SKILL.md",
-      summary: "",
-      uses: [],
-      isEntry: true,
-    };
-    const graph = {
-      skillId: "s",
-      skillName: "s",
-      rootPath: "/tmp/skill",
-      nodes: [skill, node],
-      edges: [{ from: "skill-md", to: "step:1", inferred: true, relationship: "inferred", confidence: "low" }],
-    };
-    const diagnosis = {
-      confidence: "partial",
-      message: HEADING_HEURISTIC,
-      fixPrompt: "Add numbered steps.",
-      rewriteExample: HEADING_REWRITE_EXAMPLE,
-    };
-    expect(isHostToWebview({ type: "graph", graph, procedure: graph, diagnosis, catalog: [], direction: "TB" })).toBe(true);
-    expect(isHostToWebview({
-      type: "graph",
-      graph,
-      procedure: graph,
-      diagnosis: { ...diagnosis, rewriteExample: 1 },
-      catalog: [],
-      direction: "TB",
-    })).toBe(false);
+    const result = parse({ "SKILL.md": "## Gather\nRead the ticket.\n" });
+    const message = { type: "graph" as const, graph: result.graph, procedure: result.graph, diagnosis: result.diagnosis, catalog: [], direction: "TB" as const };
+    expect(result.diagnosis.rewriteExample).toBe(HEADING_REWRITE_EXAMPLE);
+    expect(isHostToWebview(message)).toBe(true);
+    expect(isHostToWebview({ ...message, diagnosis: { ...result.diagnosis, rewriteExample: 1 } })).toBe(false);
   });
 });
