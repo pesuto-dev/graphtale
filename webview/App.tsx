@@ -7,6 +7,7 @@ import { toFlow } from "./layout";
 import { toCompactFlow } from "./compactLayout";
 import { CatalogInventory } from "./CatalogInventory";
 import { GoToStep } from "./GoToStep";
+import { nodesPresentOnFlow } from "./stepMatch";
 import { useFindShortcut } from "./useFindShortcut";
 import { Inspector } from "./Inspector";
 import { Legend } from "./Legend";
@@ -88,7 +89,7 @@ function AppShell() {
         <div className="toolbar-stats">
           {state.view === "flow" && display.nodes.length > 0 ? (
             <GoToStep
-              nodes={display.nodes.filter((node) => flow.nodes.some((item) => item.id === node.id))}
+              nodes={nodesPresentOnFlow(display.nodes, flow.nodes)}
               inputRef={stepSearchRef}
               onGo={state.goToNode}
             />

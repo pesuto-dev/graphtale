@@ -37,18 +37,23 @@ describe("GoToStep", () => {
     expect(screen.getByRole("status").textContent).toContain("Showing 2. Gather files");
   });
 
-  it("moves through title matches with the arrow keys", async () => {
+  it("lists the shared prefix in source order", async () => {
     const user = userEvent.setup();
-    const onGo = vi.fn();
-    render(<GoToStep nodes={nodes} onGo={onGo} />);
-    const field = screen.getByRole("combobox", { name: "Go to step" });
-    await user.type(field, "N2");
+    render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
+    await user.type(screen.getByRole("combobox", { name: "Go to step" }), "N2");
     const options = screen.getAllByRole("option");
     expect(options.map((option) => option.textContent?.replace(/\s+/g, " ").trim())).toEqual([
       "N2a Research the ticket",
       "N2b Verify the ticket",
     ]);
     expect(options[0].getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("opens the next match after ArrowDown", async () => {
+    const user = userEvent.setup();
+    const onGo = vi.fn();
+    render(<GoToStep nodes={nodes} onGo={onGo} />);
+    await user.type(screen.getByRole("combobox", { name: "Go to step" }), "N2");
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onGo).toHaveBeenCalledWith("step:N2b");
   });
@@ -66,19 +71,29 @@ describe("GoToStep", () => {
     expect(screen.getByRole("status").textContent).toBe("");
   });
 
-  it("moves back up the list and reopens it after blur", async () => {
+  it("moves the highlight back up the list", async () => {
+    const user = userEvent.setup();
+    render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
+    await user.type(screen.getByRole("combobox", { name: "Go to step" }), "ticket");
+    await user.keyboard("{ArrowDown}{ArrowUp}");
+    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("reopens the list after blur when the query remains", async () => {
     const user = userEvent.setup();
     render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
     const field = screen.getByRole("combobox", { name: "Go to step" });
     await user.type(field, "ticket");
-    await user.keyboard("{ArrowDown}{ArrowUp}");
-    expect(screen.getAllByRole("option")[0].getAttribute("aria-selected")).toBe("true");
     await user.click(document.body);
     await waitFor(() => expect(screen.queryByRole("option")).toBeNull());
     await user.click(field);
     expect(screen.getAllByRole("option").length).toBeGreaterThan(1);
-    await user.keyboard("{Escape}");
-    expect((field as HTMLInputElement).value).toBe("");
+  });
+
+  it("ignores Escape when the field is already empty", async () => {
+    const user = userEvent.setup();
+    render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
+    const field = screen.getByRole("combobox", { name: "Go to step" });
     field.focus();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("option")).toBeNull();

@@ -18,8 +18,30 @@ import {
   initialGraphView,
 } from "./appConfig";
 import type { SkillFlowNode } from "./SkillNodeView";
-import { STEP_FOCUS_MS, stepFocusOptions } from "./findInView";
+import { STEP_FOCUS_MS, stepFocusOptions } from "./stepFocus";
 import { vscode } from "./vscode";
+
+const STEP_FIT_SOON_MS = 220;
+const STEP_FIT_LATE_MS = 480;
+
+type StepFitHandles = { frame: number; soon: number; late: number };
+
+function scheduleStepFit(fit: () => void): StepFitHandles {
+  return {
+    frame: window.requestAnimationFrame(fit),
+    soon: window.setTimeout(fit, STEP_FIT_SOON_MS),
+    late: window.setTimeout(fit, STEP_FIT_LATE_MS),
+  };
+}
+
+function clearStepFit(handles: StepFitHandles | undefined): void {
+  if (!handles) {
+    return;
+  }
+  window.cancelAnimationFrame(handles.frame);
+  window.clearTimeout(handles.soon);
+  window.clearTimeout(handles.late);
+}
 
 export function useViewState() {
   const [graph, setGraph] = useState<SkillGraph>(emptyGraph);
@@ -47,6 +69,8 @@ export function useViewState() {
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
   const stepFocusRef = useRef<{ id: string; until: number } | null>(null);
+  const stepFitRef = useRef<StepFitHandles | undefined>(undefined);
+  useEffect(() => () => clearStepFit(stepFitRef.current), []);
   selectedIdRef.current = selectedId;
   viewRef.current = view;
 
@@ -139,10 +163,8 @@ export function useViewState() {
   function goToNode(id: string): void {
     stepFocusRef.current = { id, until: Date.now() + STEP_FOCUS_MS };
     selectNode(id);
-    const run = () => fitVisible();
-    requestAnimationFrame(run);
-    window.setTimeout(run, 220);
-    window.setTimeout(run, 480);
+    clearStepFit(stepFitRef.current);
+    stepFitRef.current = scheduleStepFit(() => fitVisible());
   }
 
   function toggleExpanded(id: string): void {

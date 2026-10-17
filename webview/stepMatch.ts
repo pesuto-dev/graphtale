@@ -1,22 +1,12 @@
 import type { SkillNode } from "@shared/protocol";
 
 const NUMBERED_LABEL = /^(\S+)\.\s+(\S[\s\S]*)$/;
+const MISS_RANK = 100;
 
-/** How long a “go to step” fit keeps winning over a whole-graph fit. */
-export const STEP_FOCUS_MS = 700;
-
-export function filterCatalogNodes(nodes: SkillNode[], query: string): SkillNode[] {
-  const q = query.trim().toLowerCase();
-  if (!q) {
-    return nodes;
-  }
-  return nodes.filter((node) =>
-    [node.label, node.path, node.summary].some((field) => field.toLowerCase().includes(q)),
-  );
-}
+export type StepParts = { number: string; title: string };
 
 /** Number is the token before “. ”; otherwise the `step:` id suffix. */
-export function stepNumberAndTitle(node: SkillNode): { number: string; title: string } {
+export function stepNumberAndTitle(node: SkillNode): StepParts {
   const match = NUMBERED_LABEL.exec(node.label);
   if (match) {
     return { number: match[1], title: match[2] };
@@ -36,39 +26,21 @@ export function rankSteps(nodes: SkillNode[], query: string): SkillNode[] {
   if (!q) {
     return [];
   }
-  const scored = nodes.flatMap((node, index) => {
-    const rank = rankStep(node, q);
-    return rank >= 100 ? [] : [{ node, rank, index }];
-  });
+  const scored = nodes.flatMap((node, index) => scoreStep(node, q, index));
   scored.sort((a, b) => a.rank - b.rank || a.index - b.index);
   return scored.map((hit) => hit.node);
 }
 
-export function isFindShortcut(event: {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-}): boolean {
-  return (event.key === "f" || event.key === "F") && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+export function nodesPresentOnFlow(nodes: SkillNode[], shown: { id: string }[]): SkillNode[] {
+  const ids = new Set(shown.map((item) => item.id));
+  return nodes.filter((node) => ids.has(node.id));
 }
 
-/** Fit a single node in the middle of the pane without filling the screen. */
-export function stepFocusOptions(nodeId: string): {
-  nodes: { id: string }[];
-  padding: number;
-  duration: number;
-  minZoom: number;
-  maxZoom: number;
-} {
-  return {
-    nodes: [{ id: nodeId }],
-    padding: 0.45,
-    duration: 180,
-    minZoom: 0.2,
-    maxZoom: 1.2,
-  };
+type ScoredStep = { node: SkillNode; rank: number; index: number };
+
+function scoreStep(node: SkillNode, query: string, index: number): ScoredStep[] {
+  const rank = rankStep(node, query);
+  return rank >= MISS_RANK ? [] : [{ node, rank, index }];
 }
 
 function rankStep(node: SkillNode, query: string): number {
@@ -91,11 +63,19 @@ function rankStep(node: SkillNode, query: string): number {
   if (t.includes(query)) {
     return 4;
   }
-  // A longer step number such as 20 contains "2", but that is not a title hit.
-  if (label.includes(query) && !(n.includes(query) && n !== query && !isStepPrefix(n, query))) {
+  if (labelMentionsQuery(label, n, query)) {
     return 5;
   }
-  return 100;
+  return MISS_RANK;
+}
+
+/** A longer step number such as 20 contains "2", but that is not a title hit. */
+function labelMentionsQuery(label: string, number: string, query: string): boolean {
+  if (!label.includes(query)) {
+    return false;
+  }
+  const longerNumber = number.includes(query) && number !== query;
+  return !longerNumber || isStepPrefix(number, query);
 }
 
 /** Prefix match that does not treat a longer step number as the same step. */

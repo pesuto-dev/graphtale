@@ -1,19 +1,15 @@
-import type { Ref } from "react";
+import type { ReactElement, Ref } from "react";
 import type { SkillNode } from "@shared/protocol";
-import { stepNumberAndTitle } from "./findInView";
-import { useGoToStep } from "./useGoToStep";
+import { stepNumberAndTitle } from "./stepMatch";
+import { useGoToStep, type GoToStepModel } from "./useGoToStep";
 
-type Step = ReturnType<typeof useGoToStep>;
-
-export function GoToStep({
-  nodes,
-  onGo,
-  inputRef,
-}: {
+export type GoToStepProps = {
   nodes: SkillNode[];
   onGo: (id: string) => void;
   inputRef?: Ref<HTMLInputElement>;
-}) {
+};
+
+export function GoToStep({ nodes, onGo, inputRef }: GoToStepProps): ReactElement {
   const step = useGoToStep(nodes, onGo);
   return (
     <div className="go-to-step search-field">
@@ -29,12 +25,14 @@ export function GoToStep({
           />
         ) : null}
       </div>
-      <p className="go-to-step-status" role="status">{step.status}</p>
+      <p className="go-to-step-status" role="status">
+        {step.status}
+      </p>
     </div>
   );
 }
 
-function GoToStepInput({ step, inputRef }: { step: Step; inputRef?: Ref<HTMLInputElement> }) {
+function GoToStepInput({ step, inputRef }: { step: GoToStepModel; inputRef?: Ref<HTMLInputElement> }): ReactElement {
   const current = step.shown ? step.matches[step.activeIndex] : undefined;
   return (
     <input
@@ -58,17 +56,14 @@ function GoToStepInput({ step, inputRef }: { step: Step; inputRef?: Ref<HTMLInpu
   );
 }
 
-function GoToStepList({
-  listId,
-  matches,
-  activeIndex,
-  onCommit,
-}: {
+type GoToStepListProps = {
   listId: string;
   matches: SkillNode[];
   activeIndex: number;
   onCommit: (node: SkillNode) => void;
-}) {
+};
+
+function GoToStepList({ listId, matches, activeIndex, onCommit }: GoToStepListProps): ReactElement {
   return (
     <ul id={listId} role="listbox" aria-label="Matching steps" className="go-to-step-list">
       {matches.map((node, index) => (
@@ -84,18 +79,16 @@ function GoToStepList({
   );
 }
 
-function GoToStepOption({
-  listId,
-  node,
-  selected,
-  onCommit,
-}: {
+type GoToStepOptionProps = {
   listId: string;
   node: SkillNode;
   selected: boolean;
   onCommit: (node: SkillNode) => void;
-}) {
+};
+
+function GoToStepOption({ listId, node, selected, onCommit }: GoToStepOptionProps): ReactElement {
   const parts = stepNumberAndTitle(node);
+  const className = selected ? "go-to-step-option is-active" : "go-to-step-option";
   return (
     <li role="presentation">
       <button
@@ -103,7 +96,7 @@ function GoToStepOption({
         id={optionId(listId, node.id)}
         role="option"
         aria-selected={selected}
-        className={selected ? "go-to-step-option is-active" : "go-to-step-option"}
+        className={className}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => onCommit(node)}
       >

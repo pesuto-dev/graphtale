@@ -1,47 +1,33 @@
-import type { KeyboardEvent, Ref } from "react";
+import type { KeyboardEvent, ReactElement, Ref } from "react";
 
-export function CatalogSearch({
-  query,
-  total,
-  matchCount,
-  inputRef,
-  onQuery,
-}: {
+export type CatalogSearchProps = {
   query: string;
-  total: number;
-  matchCount: number;
+  status: string;
   inputRef?: Ref<HTMLInputElement>;
   onQuery: (query: string) => void;
-}) {
-  const trimmed = query.trim();
-  const status = !trimmed
-    ? ""
-    : matchCount === 0
-      ? `No files match "${trimmed}".`
-      : `${matchCount} of ${total} files`;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+};
+
+export function CatalogSearch(props: CatalogSearchProps): ReactElement {
+  const described = props.query.trim().length > 0;
   return (
-    <div className="inventory-search search-field">
+    <div className="catalog-search search-field">
       <label htmlFor="catalog-search">Search files</label>
       <input
         id="catalog-search"
-        ref={inputRef}
+        ref={props.inputRef}
         type="search"
-        value={query}
+        value={props.query}
         placeholder="Name, path, or description"
         autoComplete="off"
         spellCheck={false}
-        aria-describedby={trimmed ? "catalog-search-status" : undefined}
-        onChange={(event) => onQuery(event.target.value)}
-        onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-          if (event.key === "Escape" && query) {
-            event.preventDefault();
-            onQuery("");
-          }
-        }}
+        aria-describedby={described ? "catalog-search-status" : undefined}
+        onChange={(event) => props.onQuery(event.target.value)}
+        onKeyDown={props.onKeyDown}
       />
-      {trimmed ? (
-        <p id="catalog-search-status" className="inventory-search-status" role="status">
-          {status}
+      {described ? (
+        <p id="catalog-search-status" className="catalog-search-status" role="status">
+          {props.status}
         </p>
       ) : null}
     </div>

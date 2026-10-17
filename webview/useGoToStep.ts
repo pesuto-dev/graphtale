@@ -1,16 +1,36 @@
-import { useEffect, useId, useRef, useState, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import type { SkillNode } from "@shared/protocol";
-import { rankSteps } from "./findInView";
-import { goToStepKey } from "./goToStepKey";
+import { goToStepKey, type GoToStepKeyState } from "./goToStepKey";
+import { rankSteps } from "./stepMatch";
 
 const MAX_MATCHES = 8;
 const BLUR_MS = 150;
 
-type SetText = Dispatch<SetStateAction<string>>;
-type SetFlag = Dispatch<SetStateAction<boolean>>;
-type SetIndex = Dispatch<SetStateAction<number>>;
+export type GoToStepModel = {
+  listId: string;
+  query: string;
+  status: string;
+  shown: boolean;
+  matches: SkillNode[];
+  activeIndex: number;
+  commit: (node: SkillNode) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onChange: (value: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+};
 
-export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void) {
+type TimerRef = { current: number | undefined };
+
+type StepSetters = {
+  onGo: (id: string) => void;
+  setQuery: (query: string) => void;
+  setOpen: (open: boolean) => void;
+  setActive: (active: number) => void;
+  setStatus: (status: string) => void;
+};
+
+export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void): GoToStepModel {
   const listId = useId();
   const blurTimer = useRef<number | undefined>(undefined);
   const [query, setQuery] = useState("");
@@ -21,6 +41,7 @@ export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void) {
   const activeIndex = Math.min(active, Math.max(matches.length - 1, 0));
   const shown = open && query.trim().length > 0 && matches.length > 0;
   const setters = { onGo, setQuery, setOpen, setActive, setStatus };
+  const keyState = { query, open, matches, active };
 
   useEffect(() => () => window.clearTimeout(blurTimer.current), []);
 
@@ -31,25 +52,31 @@ export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void) {
     shown,
     matches,
     activeIndex,
-    commit: (node: SkillNode) => commitStep(node, setters),
-    onKeyDown: (event: KeyboardEvent<HTMLInputElement>) =>
-      applyGoToStepKey(event, { query, open, matches, active }, setters),
-    onChange(value: string) {
-      setQuery(value);
-      setActive(0);
-      setOpen(true);
-      setStatus("");
-    },
-    onFocus() {
-      window.clearTimeout(blurTimer.current);
-      if (query.trim()) {
-        setOpen(true);
-      }
-    },
-    onBlur() {
-      blurTimer.current = window.setTimeout(() => setOpen(false), BLUR_MS);
-    },
+    commit: (node) => commitStep(node, setters),
+    onKeyDown: (event) => applyGoToStepKey(event, keyState, setters),
+    onChange: (value) => changeQuery(value, setters),
+    onFocus: () => focusQuery(query, blurTimer, setOpen),
+    onBlur: () => blurQuery(blurTimer, setOpen),
   };
+}
+
+function changeQuery(value: string, setters: StepSetters): void {
+  setters.setQuery(value);
+  setters.setActive(0);
+  setters.setOpen(true);
+  setters.setStatus("");
+}
+
+function focusQuery(query: string, blurTimer: TimerRef, setOpen: (open: boolean) => void): void {
+  window.clearTimeout(blurTimer.current);
+  if (query.trim()) {
+    setOpen(true);
+  }
+}
+
+function blurQuery(blurTimer: TimerRef, setOpen: (open: boolean) => void): void {
+  window.clearTimeout(blurTimer.current);
+  blurTimer.current = window.setTimeout(() => setOpen(false), BLUR_MS);
 }
 
 function commitStep(node: SkillNode, setters: StepSetters): void {
@@ -60,11 +87,7 @@ function commitStep(node: SkillNode, setters: StepSetters): void {
   setters.setStatus(`Showing ${node.label}`);
 }
 
-function applyGoToStepKey(
-  event: KeyboardEvent<HTMLInputElement>,
-  state: { query: string; open: boolean; matches: SkillNode[]; active: number },
-  setters: StepSetters,
-): void {
+function applyGoToStepKey(event: KeyboardEvent<HTMLInputElement>, state: GoToStepKeyState, setters: StepSetters): void {
   const next = goToStepKey(event.key, state);
   if (!next) {
     return;
@@ -76,10 +99,8 @@ function applyGoToStepKey(
     return;
   }
   if (next.kind === "clear") {
-    setters.setQuery("");
+    changeQuery("", setters);
     setters.setOpen(false);
-    setters.setActive(0);
-    setters.setStatus("");
     return;
   }
   if (next.kind === "miss") {
@@ -89,11 +110,3 @@ function applyGoToStepKey(
   }
   commitStep(next.node, setters);
 }
-
-type StepSetters = {
-  onGo: (id: string) => void;
-  setQuery: SetText;
-  setOpen: SetFlag;
-  setActive: SetIndex;
-  setStatus: SetText;
-};

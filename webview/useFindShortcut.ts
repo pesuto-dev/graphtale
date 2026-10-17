@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from "react";
 import type { GraphView } from "@shared/protocol";
-import { isFindShortcut } from "./findInView";
+import { isFindShortcut } from "./findShortcut";
 
 export function useFindShortcut(
   view: GraphView,

@@ -1,0 +1,81 @@
+.go-to-step {
+  --go-to-step-basis: 180px;
+  --go-to-step-min: 160px;
+  --go-to-step-max: 240px;
+  --go-to-step-list-offset: 4px;
+  --go-to-step-list-pad: 4px;
+  --go-to-step-list-radius: 8px;
+  --go-to-step-list-max-height: 240px;
+  --go-to-step-list-layer: 5;
+  --go-to-step-shadow-color: #000;
+  --go-to-step-shadow: 0 8px 24px color-mix(in srgb, var(--go-to-step-shadow-color) 35%, transparent);
+  --go-to-step-option-gap: 8px;
+  --go-to-step-option-radius: 6px;
+  --go-to-step-option-pad-block: 6px;
+  --go-to-step-option-pad-inline: 8px;
+  --go-to-step-number-size: 11px;
+  --go-to-step-status-size: 11px;
+  --go-to-step-border-width: 1px;
+  --go-to-step-status-min-height: 1em;
+  position: relative;
+  flex: 1 1 var(--go-to-step-basis);
+  min-width: var(--go-to-step-min);
+  max-width: var(--go-to-step-max);
+}
+
+.go-to-step-control {
+  position: relative;
+}
+
+.go-to-step-list {
+  position: absolute;
+  z-index: var(--go-to-step-list-layer);
+  top: calc(100% + var(--go-to-step-list-offset));
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--go-to-step-list-pad);
+  list-style: none;
+  background: var(--elevated);
+  border: var(--go-to-step-border-width) solid var(--border);
+  border-radius: var(--go-to-step-list-radius);
+  box-shadow: var(--go-to-step-shadow);
+  max-height: var(--go-to-step-list-max-height);
+  overflow: auto;
+}
+
+.go-to-step-option {
+  width: 100%;
+  display: flex;
+  gap: var(--go-to-step-option-gap);
+  align-items: baseline;
+  text-align: left;
+  background: transparent;
+  border: var(--go-to-step-border-width) solid transparent;
+  border-radius: var(--go-to-step-option-radius);
+  padding: var(--go-to-step-option-pad-block) var(--go-to-step-option-pad-inline);
+}
+
+.go-to-step-option.is-active,
+.go-to-step-option:hover {
+  background: var(--fill);
+  border-color: var(--border);
+}
+
+.go-to-step-number {
+  font-family: var(--mono);
+  font-size: var(--go-to-step-number-size);
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.go-to-step-status {
+  margin: 0;
+  min-height: var(--go-to-step-status-min-height);
+  font-size: var(--go-to-step-status-size);
+  color: var(--muted);
+}
+
+.go-to-step-status:empty {
+  display: none;
+}

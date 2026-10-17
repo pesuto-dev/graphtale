@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupInventory } from "./CatalogInventory";
+import { groupInventory } from "./inventoryGroups";
 import { compactNodeBoxesOverlap } from "./compactGeometry";
 import { toCompactFlow } from "./compactLayout";
 import {

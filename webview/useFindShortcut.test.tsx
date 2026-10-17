@@ -24,12 +24,14 @@ function pressFind(init: KeyboardEventInit): void {
 }
 
 describe("useFindShortcut", () => {
-  it("focuses Go to step on Ctrl+F and Catalog search on Cmd+F", () => {
-    const view = render(<Probe view="flow" />);
+  it("focuses Go to step on Ctrl+F in Flow", () => {
+    render(<Probe view="flow" />);
     pressFind({ key: "f", ctrlKey: true });
     expect(document.activeElement).toBe(screen.getByLabelText("Go to step"));
+  });
 
-    view.rerender(<Probe view="catalog" />);
+  it("focuses Search files on Cmd+F in Catalog", () => {
+    render(<Probe view="catalog" />);
     pressFind({ key: "F", metaKey: true });
     expect(document.activeElement).toBe(screen.getByLabelText("Search files"));
   });

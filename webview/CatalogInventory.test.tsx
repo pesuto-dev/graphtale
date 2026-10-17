@@ -50,34 +50,43 @@ describe("CatalogInventory", () => {
     expect(screen.getByRole("button", { name: /handoff-target/ })).toBeTruthy();
   });
 
-  it("filters by file name, path, and description", async () => {
+  it("filters by file name", async () => {
     const user = userEvent.setup();
     renderInventory();
-    const search = screen.getByLabelText("Search files");
-
-    await user.type(search, "resolve");
+    await user.type(screen.getByLabelText("Search files"), "resolve");
     expect(screen.getByRole("button", { name: /resolve\.py/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /handoff-target/ })).toBeNull();
+  });
 
-    await user.clear(search);
-    await user.type(search, "scripts/");
+  it("filters by path", async () => {
+    const user = userEvent.setup();
+    renderInventory();
+    await user.type(screen.getByLabelText("Search files"), "scripts/");
     expect(screen.getByRole("button", { name: /resolve\.py/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /SKILL\.md/ })).toBeNull();
+  });
 
-    await user.clear(search);
-    await user.type(search, "customer reply");
+  it("filters by description", async () => {
+    const user = userEvent.setup();
+    renderInventory();
+    await user.type(screen.getByLabelText("Search files"), "customer reply");
     expect(screen.getByRole("button", { name: /handoff-target/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /resolve\.py/ })).toBeNull();
   });
 
-  it("shows an empty state when nothing matches, and Escape restores the list", async () => {
+  it("shows an empty state when nothing matches", async () => {
+    const user = userEvent.setup();
+    renderInventory();
+    await user.type(screen.getByLabelText("Search files"), "missing-file");
+    expect(screen.getByRole("status").textContent).toContain('No files match "missing-file"');
+    expect(screen.queryByRole("button", { name: /resolve\.py/ })).toBeNull();
+  });
+
+  it("restores the list when Escape clears the query", async () => {
     const user = userEvent.setup();
     renderInventory();
     const search = screen.getByLabelText("Search files");
     await user.type(search, "missing-file");
-    expect(screen.getByRole("status").textContent).toContain('No files match "missing-file"');
-    expect(screen.queryByRole("button", { name: /resolve\.py/ })).toBeNull();
-
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: /resolve\.py/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /handoff-target/ })).toBeTruthy();
