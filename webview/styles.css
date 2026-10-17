@@ -2,6 +2,12 @@
 @import "./styles/toolbar.css";
 @import "./styles/inventory.css";
 @import "./styles/nodes-compact.css";
-@import "./styles/nodes-detail.css";
+@import "./styles/graph-canvas.css";
+@import "./styles/legend.css";
+@import "./styles/node-card.css";
+@import "./styles/node-badges.css";
+@import "./styles/node-expand.css";
+@import "./styles/edges.css";
+@import "./styles/graph-controls.css";
 @import "./styles/inspector.css";
 @import "./styles/high-contrast.css";
