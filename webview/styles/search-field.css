@@ -1,0 +1,45 @@
+.search-field {
+  --search-field-gap: 4px;
+  --search-field-label-size: 11px;
+  --search-field-label-weight: 650;
+  --search-field-label-tracking: 0.04em;
+  --search-field-pad-block: 6px;
+  --search-field-pad-inline: 10px;
+  --search-field-radius: 6px;
+  --search-field-border-width: 1px;
+  --search-field-focus-width: 2px;
+  --search-field-focus-offset: 3px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--search-field-gap);
+  min-width: 0;
+}
+
+.search-field > label {
+  font-size: var(--search-field-label-size);
+  font-weight: var(--search-field-label-weight);
+  letter-spacing: var(--search-field-label-tracking);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.search-field input[type="search"] {
+  font: inherit;
+  color: var(--fg);
+  background: var(--fill);
+  border: var(--search-field-border-width) solid var(--border);
+  border-radius: var(--search-field-radius);
+  padding: var(--search-field-pad-block) var(--search-field-pad-inline);
+  width: 100%;
+}
+
+.search-field input[type="search"]::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.search-field input[type="search"]:focus-visible {
+  outline: var(--search-field-focus-width) solid var(--accent);
+  outline-offset: var(--search-field-focus-offset);
+}

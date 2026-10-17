@@ -57,6 +57,7 @@ interface LayoutState {
 
 export interface ViewState extends GraphState, LayoutState, ViewCommands {
   narrow: boolean;
+  goToNode: (id: string) => void;
 }
 
 function useGraphState(): GraphState {
@@ -98,7 +99,7 @@ export function useViewState(): ViewState {
   const graphs = useGraphState();
   const layout = useLayoutState();
   const narrow = useNarrowPanel();
-  useGraphFit({
+  const focusStep = useGraphFit({
     compact: layout.compact,
     view: layout.view,
     direction: layout.direction,
@@ -124,5 +125,14 @@ export function useViewState(): ViewState {
     setFitNonce: layout.setFitNonce,
     setCopyState: graphs.setCopyState,
   });
-  return { ...graphs, ...layout, narrow, ...commands };
+  return {
+    ...graphs,
+    ...layout,
+    narrow,
+    ...commands,
+    goToNode: (id: string): void => {
+      focusStep(id);
+      commands.selectNode(id);
+    },
+  };
 }

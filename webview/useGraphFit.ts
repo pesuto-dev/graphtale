@@ -1,7 +1,8 @@
-import { useEffect, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { useReactFlow, type FitViewOptions } from "@xyflow/react";
 import type { GraphView, LayoutDirection } from "@shared/protocol";
 import { COMPACT_FIT_VIEW_OPTIONS, FIT_VIEW_OPTIONS } from "./appConfig";
+import { STEP_FIT_LATE_MS, STEP_FIT_SOON_MS, STEP_FOCUS_MS, stepFocusOptions } from "./stepFocus";
 
 export interface GraphFitInput {
   compact: boolean;
@@ -14,23 +15,55 @@ export interface GraphFitInput {
   containerRef: RefObject<HTMLDivElement>;
 }
 
+interface StepFocusLock {
+  id: string;
+  until: number;
+}
+
+interface StepFitHandles {
+  frame: number;
+  soon: number;
+  late: number;
+}
+
+type FitView = ReturnType<typeof useReactFlow>["fitView"];
+
 function fitOptions(compact: boolean): FitViewOptions {
   return compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS;
 }
 
-function scheduleGraphFit(
-  fitView: ReturnType<typeof useReactFlow>["fitView"],
-  compact: boolean,
-): () => void {
-  const run = (): void => {
-    void fitView(fitOptions(compact));
-  };
+function fitVisible(fitView: FitView, compact: boolean, focus: StepFocusLock | null): void {
+  if (focus && Date.now() < focus.until) {
+    void fitView(stepFocusOptions(focus.id));
+    return;
+  }
+  void fitView(fitOptions(compact));
+}
+
+function scheduleGraphFit(run: () => void): () => void {
   const frame = requestAnimationFrame(run);
   const timer = setTimeout(run, 150);
   return () => {
     cancelAnimationFrame(frame);
     clearTimeout(timer);
   };
+}
+
+function scheduleStepFit(run: () => void): StepFitHandles {
+  return {
+    frame: window.requestAnimationFrame(run),
+    soon: window.setTimeout(run, STEP_FIT_SOON_MS),
+    late: window.setTimeout(run, STEP_FIT_LATE_MS),
+  };
+}
+
+function clearStepFit(handles: StepFitHandles | undefined): void {
+  if (!handles) {
+    return;
+  }
+  window.cancelAnimationFrame(handles.frame);
+  window.clearTimeout(handles.soon);
+  window.clearTimeout(handles.late);
 }
 
 function watchGraphSize(element: HTMLElement, onResize: () => void): () => void {
@@ -56,22 +89,37 @@ function watchGraphSize(element: HTMLElement, onResize: () => void): () => void 
   };
 }
 
-/** Keeps the whole graph in the pane after layout changes and panel resizes. */
-export function useGraphFit(input: GraphFitInput): void {
+/** Keeps the graph in view, and returns a callback that centers one step. */
+export function useGraphFit(input: GraphFitInput): (id: string) => void {
   const { fitView } = useReactFlow();
   const { compact, view, direction, expandedIds, fitNonce, narrow, inspectorOpen, containerRef } = input;
+  const focusRef = useRef<StepFocusLock | null>(null);
+  const jumpRef = useRef<StepFitHandles | undefined>(undefined);
+  const run = useCallback((): void => {
+    fitVisible(fitView, compact, focusRef.current);
+  }, [fitView, compact]);
 
   useEffect(() => {
-    return scheduleGraphFit(fitView, compact);
-  }, [view, direction, expandedIds, fitNonce, compact, narrow, inspectorOpen, fitView]);
+    return () => {
+      clearStepFit(jumpRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return scheduleGraphFit(run);
+  }, [view, direction, expandedIds, fitNonce, narrow, inspectorOpen, run]);
 
   useEffect(() => {
     const element = containerRef.current;
     if (!element) {
       return;
     }
-    return watchGraphSize(element, () => {
-      void fitView(fitOptions(compact));
-    });
-  }, [fitView, compact, view, fitNonce, containerRef]);
+    return watchGraphSize(element, run);
+  }, [view, fitNonce, containerRef, run]);
+
+  return (id: string): void => {
+    focusRef.current = { id, until: Date.now() + STEP_FOCUS_MS };
+    clearStepFit(jumpRef.current);
+    jumpRef.current = scheduleStepFit(run);
+  };
 }

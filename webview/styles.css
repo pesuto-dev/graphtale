@@ -1,6 +1,9 @@
 @import url("./styles/tokens.css");
 @import url("./styles/toolbar.css");
+@import url("./styles/search-field.css");
+@import url("./styles/go-to-step.css");
 @import url("./styles/inventory.css");
+@import url("./styles/catalog-search.css");
 @import url("./styles/nodes-compact.css");
 @import url("./styles/graph-canvas.css");
 @import url("./styles/legend.css");

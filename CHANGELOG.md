@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Catalog** search filters the inventory by file name, path, and description. An empty state appears when nothing matches.
+- **Go to step** in Flow finds a step by title or number, centers and selects that node, and opens the inspector. Ctrl or Cmd+F focuses the field.
 - Flow and Catalog are a tab list. Arrow keys move between them, and the selected tab exposes `aria-selected`.
 - The selected Catalog row sets `aria-current`.
 - Compact nodes expose their full name, kind plus label, to assistive technology. The visible chip can stay shortened.

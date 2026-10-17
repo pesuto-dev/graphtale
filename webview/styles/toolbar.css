@@ -7,6 +7,8 @@
 }
 
 .toolbar {
+  position: relative;
+  z-index: 4;
   padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--elevated) 88%, transparent);
@@ -18,9 +20,9 @@
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
-.title-row,
 .inspector-actions,
 .inspector-meta,
 .toolbar-stats,
@@ -28,6 +30,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.toolbar > * {
+  min-width: 0;
 }
 
 .view-tabs {

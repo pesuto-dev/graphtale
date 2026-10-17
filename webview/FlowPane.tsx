@@ -1,4 +1,4 @@
-import type { KeyboardEventHandler, ReactElement } from "react";
+import type { KeyboardEventHandler, ReactElement, Ref } from "react";
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 import { diagnosisNeededWhen, diagnosisTitle, type ProcedureDiagnosis } from "@shared/protocol";
 import type { AppViewModel } from "./appModel";
@@ -157,10 +157,12 @@ function FlowBody({
   state,
   model,
   onGraphKeyDown,
+  searchRef,
 }: {
   state: ViewState;
   model: AppViewModel;
   onGraphKeyDown: KeyboardEventHandler<HTMLDivElement>;
+  searchRef: Ref<HTMLInputElement>;
 }): ReactElement {
   if (state.view === "catalog") {
     return (
@@ -171,6 +173,7 @@ function FlowBody({
         onOpen={(nodeId) => {
           vscode.postMessage({ type: "openFile", nodeId });
         }}
+        searchRef={searchRef}
       />
     );
   }
@@ -195,10 +198,12 @@ export function FlowPane({
   state,
   model,
   onRefresh,
+  searchRef,
 }: {
   state: ViewState;
   model: AppViewModel;
   onRefresh: () => void;
+  searchRef: Ref<HTMLInputElement>;
 }): ReactElement {
   const onGraphKeyDown = useGraphActivation(state.selectNode);
   return (
@@ -218,7 +223,7 @@ export function FlowPane({
             onCopy={state.copyFixPrompt}
           />
         ) : null}
-        <FlowBody state={state} model={model} onGraphKeyDown={onGraphKeyDown} />
+        <FlowBody state={state} model={model} onGraphKeyDown={onGraphKeyDown} searchRef={searchRef} />
       </div>
     </>
   );
