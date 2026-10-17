@@ -3,14 +3,14 @@ import type { SkillNode } from "@shared/protocol";
 import { catalogMatchStatus, catalogQueryClears, filterCatalogNodes } from "./catalogQuery";
 import { groupInventory, type InventoryGroup } from "./inventoryGroups";
 
-export type CatalogSearchModel = {
+export interface CatalogSearchModel {
   query: string;
   filtered: SkillNode[];
   groups: InventoryGroup[];
   status: string;
   onQuery: (query: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-};
+}
 
 export function useCatalogSearch(nodes: SkillNode[]): CatalogSearchModel {
   const [query, setQuery] = useState("");
@@ -21,7 +21,7 @@ export function useCatalogSearch(nodes: SkillNode[]): CatalogSearchModel {
     groups: groupInventory(filtered),
     status: catalogMatchStatus(query, filtered.length, nodes.length),
     onQuery: setQuery,
-    onKeyDown: (event) => clearCatalogQuery(event, query, setQuery),
+    onKeyDown: (event) => { clearCatalogQuery(event, query, setQuery); },
   };
 }
 

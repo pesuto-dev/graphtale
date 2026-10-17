@@ -24,7 +24,7 @@ import { vscode } from "./vscode";
 const STEP_FIT_SOON_MS = 220;
 const STEP_FIT_LATE_MS = 480;
 
-type StepFitHandles = { frame: number; soon: number; late: number };
+interface StepFitHandles { frame: number; soon: number; late: number }
 
 function scheduleStepFit(fit: () => void): StepFitHandles {
   return {

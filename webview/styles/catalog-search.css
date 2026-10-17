@@ -2,6 +2,7 @@
   --catalog-search-pad-block: 10px;
   --catalog-search-pad-inline: 10px;
   --catalog-search-status-size: 12px;
+
   padding: var(--catalog-search-pad-block) var(--catalog-search-pad-inline) 0;
 }
 

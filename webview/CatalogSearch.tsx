@@ -1,12 +1,12 @@
 import type { KeyboardEvent, ReactElement, Ref } from "react";
 
-export type CatalogSearchProps = {
+export interface CatalogSearchProps {
   query: string;
   status: string;
   inputRef?: Ref<HTMLInputElement>;
   onQuery: (query: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-};
+}
 
 export function CatalogSearch(props: CatalogSearchProps): ReactElement {
   const described = props.query.trim().length > 0;
@@ -22,7 +22,7 @@ export function CatalogSearch(props: CatalogSearchProps): ReactElement {
         autoComplete="off"
         spellCheck={false}
         aria-describedby={described ? "catalog-search-status" : undefined}
-        onChange={(event) => props.onQuery(event.target.value)}
+        onChange={(event) => { props.onQuery(event.target.value); }}
         onKeyDown={props.onKeyDown}
       />
       {described ? (

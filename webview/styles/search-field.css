@@ -9,6 +9,7 @@
   --search-field-border-width: 1px;
   --search-field-focus-width: 2px;
   --search-field-focus-offset: 3px;
+
   display: flex;
   flex-direction: column;
   gap: var(--search-field-gap);

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SkillNode } from "@shared/protocol";
 import { GoToStep } from "./GoToStep";
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); });
 
 function node(id: string, label: string): SkillNode {
   return { id, label, kind: "skill", path: `/skills/${id}`, summary: "", uses: [] };
@@ -42,7 +42,7 @@ describe("GoToStep", () => {
     render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
     await user.type(screen.getByRole("combobox", { name: "Go to step" }), "N2");
     const options = screen.getAllByRole("option");
-    expect(options.map((option) => option.textContent?.replace(/\s+/g, " ").trim())).toEqual([
+    expect(options.map((option) => option.textContent.replace(/\s+/g, " ").trim())).toEqual([
       "N2a Research the ticket",
       "N2b Verify the ticket",
     ]);
@@ -70,7 +70,9 @@ describe("GoToStep", () => {
     expect((field as HTMLInputElement).value).toBe("");
     expect(screen.getByRole("status").textContent).toBe("");
   });
+});
 
+describe("GoToStep list", () => {
   it("moves the highlight back up the list", async () => {
     const user = userEvent.setup();
     render(<GoToStep nodes={nodes} onGo={vi.fn()} />);
@@ -85,7 +87,7 @@ describe("GoToStep", () => {
     const field = screen.getByRole("combobox", { name: "Go to step" });
     await user.type(field, "ticket");
     await user.click(document.body);
-    await waitFor(() => expect(screen.queryByRole("option")).toBeNull());
+    await waitFor(() => { expect(screen.queryByRole("option")).toBeNull(); });
     await user.click(field);
     expect(screen.getAllByRole("option").length).toBeGreaterThan(1);
   });

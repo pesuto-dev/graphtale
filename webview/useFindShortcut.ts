@@ -21,6 +21,6 @@ export function useFindShortcut(
       input.select();
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); };
   }, [view, catalogInput, stepInput]);
 }

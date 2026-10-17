@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SkillNode } from "@shared/protocol";
 import { CatalogInventory } from "./CatalogInventory";
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); });
 
 function node(partial: Pick<SkillNode, "id" | "label" | "kind" | "path" | "summary">): SkillNode {
   return { uses: [], ...partial };

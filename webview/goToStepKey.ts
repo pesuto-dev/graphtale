@@ -6,12 +6,12 @@ export type GoToStepKey =
   | { kind: "miss"; status: string }
   | { kind: "go"; node: SkillNode };
 
-export type GoToStepKeyState = {
+export interface GoToStepKeyState {
   query: string;
   open: boolean;
   matches: SkillNode[];
   active: number;
-};
+}
 
 export function goToStepKey(key: string, state: GoToStepKeyState): GoToStepKey | undefined {
   const limit = Math.max(state.matches.length - 1, 0);
@@ -35,10 +35,16 @@ function escapeStep(state: GoToStepKeyState): GoToStepKey | undefined {
 }
 
 function enterStep(state: GoToStepKeyState, limit: number): GoToStepKey | undefined {
-  const chosen = state.matches[Math.min(state.active, limit)];
-  if (chosen) {
-    return { kind: "go", node: chosen };
+  if (state.matches.length === 0) {
+    return missStep(state.query);
   }
-  const trimmed = state.query.trim();
-  return trimmed ? { kind: "miss", status: `No step matches "${trimmed}".` } : undefined;
+  return { kind: "go", node: state.matches[Math.min(state.active, limit)] };
+}
+
+function missStep(query: string): GoToStepKey | undefined {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return { kind: "miss", status: `No step matches "${trimmed}".` };
 }

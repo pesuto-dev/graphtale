@@ -2,18 +2,18 @@ import type { SkillNode } from "@shared/protocol";
 
 export type InventoryGroupId = "entry" | "agents" | "scripts" | "references" | "handoffs" | "other";
 
-export type InventoryGroup = {
+export interface InventoryGroup {
   id: InventoryGroupId;
   title: string;
   nodes: SkillNode[];
-};
+}
 
-export type InventoryCounts = {
+export interface InventoryCounts {
   agents: number;
   scripts: number;
   references: number;
   handoffs: number;
-};
+}
 
 const ORDER: InventoryGroupId[] = ["entry", "agents", "scripts", "references", "handoffs", "other"];
 

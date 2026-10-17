@@ -3,11 +3,11 @@ import type { SkillNode } from "@shared/protocol";
 import { stepNumberAndTitle } from "./stepMatch";
 import { useGoToStep, type GoToStepModel } from "./useGoToStep";
 
-export type GoToStepProps = {
+export interface GoToStepProps {
   nodes: SkillNode[];
   onGo: (id: string) => void;
   inputRef?: Ref<HTMLInputElement>;
-};
+}
 
 export function GoToStep({ nodes, onGo, inputRef }: GoToStepProps): ReactElement {
   const step = useGoToStep(nodes, onGo);
@@ -48,7 +48,7 @@ function GoToStepInput({ step, inputRef }: { step: GoToStepModel; inputRef?: Ref
       autoComplete="off"
       spellCheck={false}
       value={step.query}
-      onChange={(event) => step.onChange(event.target.value)}
+      onChange={(event) => { step.onChange(event.target.value); }}
       onKeyDown={step.onKeyDown}
       onFocus={step.onFocus}
       onBlur={step.onBlur}
@@ -56,12 +56,12 @@ function GoToStepInput({ step, inputRef }: { step: GoToStepModel; inputRef?: Ref
   );
 }
 
-type GoToStepListProps = {
+interface GoToStepListProps {
   listId: string;
   matches: SkillNode[];
   activeIndex: number;
   onCommit: (node: SkillNode) => void;
-};
+}
 
 function GoToStepList({ listId, matches, activeIndex, onCommit }: GoToStepListProps): ReactElement {
   return (
@@ -79,12 +79,12 @@ function GoToStepList({ listId, matches, activeIndex, onCommit }: GoToStepListPr
   );
 }
 
-type GoToStepOptionProps = {
+interface GoToStepOptionProps {
   listId: string;
   node: SkillNode;
   selected: boolean;
   onCommit: (node: SkillNode) => void;
-};
+}
 
 function GoToStepOption({ listId, node, selected, onCommit }: GoToStepOptionProps): ReactElement {
   const parts = stepNumberAndTitle(node);
@@ -97,8 +97,8 @@ function GoToStepOption({ listId, node, selected, onCommit }: GoToStepOptionProp
         role="option"
         aria-selected={selected}
         className={className}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => onCommit(node)}
+        onMouseDown={(event) => { event.preventDefault(); }}
+        onClick={() => { onCommit(node); }}
       >
         {parts.number ? <span className="go-to-step-number">{parts.number}</span> : null}
         {parts.number ? " " : null}

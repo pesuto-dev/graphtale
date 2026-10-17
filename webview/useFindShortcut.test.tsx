@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { GraphView } from "@shared/protocol";
 import { useFindShortcut } from "./useFindShortcut";
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); });
 
 function Probe({ view }: { view: GraphView }) {
   const catalogRef = useRef<HTMLInputElement>(null);

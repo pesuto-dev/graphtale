@@ -3,7 +3,7 @@ import type { SkillNode } from "@shared/protocol";
 const NUMBERED_LABEL = /^(\S+)\.\s+(\S[\s\S]*)$/;
 const MISS_RANK = 100;
 
-export type StepParts = { number: string; title: string };
+export interface StepParts { number: string; title: string }
 
 /** Number is the token before “. ”; otherwise the `step:` id suffix. */
 export function stepNumberAndTitle(node: SkillNode): StepParts {
@@ -36,7 +36,7 @@ export function nodesPresentOnFlow(nodes: SkillNode[], shown: { id: string }[]):
   return nodes.filter((node) => ids.has(node.id));
 }
 
-type ScoredStep = { node: SkillNode; rank: number; index: number };
+interface ScoredStep { node: SkillNode; rank: number; index: number }
 
 function scoreStep(node: SkillNode, query: string, index: number): ScoredStep[] {
   const rank = rankStep(node, query);

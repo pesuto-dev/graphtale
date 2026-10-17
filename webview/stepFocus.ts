@@ -12,10 +12,10 @@ export function stepFocusOptions(nodeId: string): StepFocusOptions {
   };
 }
 
-export type StepFocusOptions = {
+export interface StepFocusOptions {
   nodes: { id: string }[];
   padding: number;
   duration: number;
   minZoom: number;
   maxZoom: number;
-};
+}

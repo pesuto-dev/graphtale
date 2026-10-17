@@ -16,7 +16,7 @@ export function catalogMatchStatus(query: string, matchCount: number, total: num
   if (matchCount === 0) {
     return `No files match "${trimmed}".`;
   }
-  return `${matchCount} of ${total} files`;
+  return `${String(matchCount)} of ${String(total)} files`;
 }
 
 export function catalogQueryClears(key: string, query: string): boolean {

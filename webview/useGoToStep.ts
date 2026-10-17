@@ -6,7 +6,7 @@ import { rankSteps } from "./stepMatch";
 const MAX_MATCHES = 8;
 const BLUR_MS = 150;
 
-export type GoToStepModel = {
+export interface GoToStepModel {
   listId: string;
   query: string;
   status: string;
@@ -18,17 +18,17 @@ export type GoToStepModel = {
   onChange: (value: string) => void;
   onFocus: () => void;
   onBlur: () => void;
-};
+}
 
-type TimerRef = { current: number | undefined };
+interface TimerRef { current: number | undefined }
 
-type StepSetters = {
+interface StepSetters {
   onGo: (id: string) => void;
   setQuery: (query: string) => void;
   setOpen: (open: boolean) => void;
   setActive: (active: number) => void;
   setStatus: (status: string) => void;
-};
+}
 
 export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void): GoToStepModel {
   const listId = useId();
@@ -43,7 +43,7 @@ export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void): GoT
   const setters = { onGo, setQuery, setOpen, setActive, setStatus };
   const keyState = { query, open, matches, active };
 
-  useEffect(() => () => window.clearTimeout(blurTimer.current), []);
+  useEffect(() => () => { window.clearTimeout(blurTimer.current); }, []);
 
   return {
     listId,
@@ -52,11 +52,11 @@ export function useGoToStep(nodes: SkillNode[], onGo: (id: string) => void): GoT
     shown,
     matches,
     activeIndex,
-    commit: (node) => commitStep(node, setters),
-    onKeyDown: (event) => applyGoToStepKey(event, keyState, setters),
-    onChange: (value) => changeQuery(value, setters),
-    onFocus: () => focusQuery(query, blurTimer, setOpen),
-    onBlur: () => blurQuery(blurTimer, setOpen),
+    commit: (node) => { commitStep(node, setters); },
+    onKeyDown: (event) => { applyGoToStepKey(event, keyState, setters); },
+    onChange: (value) => { changeQuery(value, setters); },
+    onFocus: () => { focusQuery(query, blurTimer, setOpen); },
+    onBlur: () => { blurQuery(blurTimer, setOpen); },
   };
 }
 
@@ -76,7 +76,7 @@ function focusQuery(query: string, blurTimer: TimerRef, setOpen: (open: boolean)
 
 function blurQuery(blurTimer: TimerRef, setOpen: (open: boolean) => void): void {
   window.clearTimeout(blurTimer.current);
-  blurTimer.current = window.setTimeout(() => setOpen(false), BLUR_MS);
+  blurTimer.current = window.setTimeout(() => { setOpen(false); }, BLUR_MS);
 }
 
 function commitStep(node: SkillNode, setters: StepSetters): void {

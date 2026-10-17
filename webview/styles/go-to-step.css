@@ -17,6 +17,7 @@
   --go-to-step-status-size: 11px;
   --go-to-step-border-width: 1px;
   --go-to-step-status-min-height: 1em;
+
   position: relative;
   flex: 1 1 var(--go-to-step-basis);
   min-width: var(--go-to-step-min);

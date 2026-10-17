@@ -1,10 +1,10 @@
-export type FindShortcutEvent = {
+export interface FindShortcutEvent {
   key: string;
   metaKey: boolean;
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
-};
+}
 
 export function isFindShortcut(event: FindShortcutEvent): boolean {
   const findKey = event.key === "f" || event.key === "F";
