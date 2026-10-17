@@ -1,4 +1,4 @@
-const DIRECTORY_REOPEN = `!${"*"}/`;
+const DIRECTORY_REOPEN = "!*/";
 const MEDIA_DIR = "docs/media";
 const STAR = "*";
 

@@ -12,7 +12,7 @@ function ignoreText(name: string): string {
 
 describe("shipPatterns", () => {
   it("normalizes negated paths and drops comments", () => {
-    const text = ["# note", "*", `!${"*"}/`, "!/README.md", "!docs/install.md", ""].join("\n");
+    const text = ["# note", "*", "!*/", "!/README.md", "!docs/install.md", ""].join("\n");
     expect(shipPatterns(text)).toEqual(["README.md", "docs/install.md"]);
   });
 

@@ -126,6 +126,11 @@ async function hasFlowNodes(frame: Frame): Promise<boolean> {
   return count > 0;
 }
 
+function exitStatus(status: number | null): string {
+  if (status === null) return "null";
+  return String(status);
+}
+
 async function movePointer(locator: Locator, display: string): Promise<void> {
   const box = await locator.boundingBox();
   if (!box) throw new Error("Recording target is not visible: bounding box is missing.");
@@ -135,6 +140,6 @@ async function movePointer(locator: Locator, display: string): Promise<void> {
     env: { ...process.env, DISPLAY: display },
   });
   if (result.error) throw new Error(`xdotool failed: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`xdotool exited ${result.status ?? "null"}`);
+  if (result.status !== 0) throw new Error(`xdotool exited ${exitStatus(result.status)}`);
   await sleep(220);
 }

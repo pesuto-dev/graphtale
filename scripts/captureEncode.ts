@@ -35,7 +35,7 @@ export function assertGif(file: string): void {
   const durationSeconds = probeDuration(file);
   const problem = clipProblem(durationSeconds, sizeBytes);
   if (problem) throw new Error(`clip out of range: ${problem}`);
-  console.log(`Wrote ${file} (${sizeBytes} bytes, ${durationSeconds.toFixed(2)}s)`);
+  console.log(`Wrote ${file} (${String(sizeBytes)} bytes, ${durationSeconds.toFixed(2)}s)`);
 }
 
 function grabArgs(paths: EncodePaths): string[] {
@@ -56,7 +56,7 @@ function displayEnv(display: string): NodeJS.ProcessEnv {
 function run(command: string, args: string[], display: string): void {
   const result = spawnSync(command, args, { stdio: "inherit", env: displayEnv(display) });
   if (result.error) throw new Error(`${command} failed: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`${command} exited ${result.status ?? "null"}`);
+  if (result.status !== 0) throw new Error(`${command} exited ${exitStatus(result.status)}`);
 }
 
 function probeDuration(file: string): number {
@@ -66,17 +66,24 @@ function probeDuration(file: string): number {
     { encoding: "utf8" },
   );
   if (probed.error) throw new Error(`ffprobe failed: ${probed.error.message}`);
-  if (probed.status !== 0) throw new Error(`ffprobe exited ${probed.status ?? "null"}`);
+  if (probed.status !== 0) throw new Error(`ffprobe exited ${exitStatus(probed.status)}`);
   if (typeof probed.stdout !== "string") throw new Error("ffprobe returned no duration");
   const duration = Number(probed.stdout.trim());
   if (!Number.isFinite(duration)) throw new Error(`ffprobe duration is not a number: ${probed.stdout.trim()}`);
   return duration;
 }
 
+function exitStatus(status: number | null): string {
+  if (status === null) return "null";
+  return String(status);
+}
+
 function exitedWithin(recorder: ChildProcess, timeoutMs: number): Promise<boolean> {
   if (recorder.exitCode !== null) return Promise.resolve(true);
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), timeoutMs);
+    const timer = setTimeout(() => {
+      resolve(false);
+    }, timeoutMs);
     recorder.once("exit", () => {
       clearTimeout(timer);
       resolve(true);

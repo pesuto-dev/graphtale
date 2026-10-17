@@ -24,10 +24,10 @@ export function pointerCenter(box: PointerBox): PointerPoint {
 /** Undefined when the clip may be published. Otherwise a short reason. */
 export function clipProblem(durationSeconds: number, sizeBytes: number): string | undefined {
   if (durationOutOfRange(durationSeconds)) {
-    return `duration ${durationSeconds}s is outside ${CLIP_MIN_SECONDS}-${CLIP_MAX_SECONDS}s`;
+    return `duration ${String(durationSeconds)}s is outside ${String(CLIP_MIN_SECONDS)}-${String(CLIP_MAX_SECONDS)}s`;
   }
   if (sizeOutOfRange(sizeBytes)) {
-    return `size ${sizeBytes} bytes is not below ${CLIP_MAX_BYTES} bytes`;
+    return `size ${String(sizeBytes)} bytes is not below ${String(CLIP_MAX_BYTES)} bytes`;
   }
   return undefined;
 }
