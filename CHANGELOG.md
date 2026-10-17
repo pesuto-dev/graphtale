@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.
+- Listing title is “Graphtale – Agent Skill Flow Viewer (SKILL.md)”. The description states the local, read-only SKILL.md flow and names Cursor, Claude Code, and Codex. Category `AI` is added next to `Visualization`. Keywords keep the previous terms and add the listing phrases (skill viewer, skill flow, claude code, codex skills, and related), deduplicated, 23 in total.
+- README header uses the new banner (icon, tagline, agent/skill/reference tags, and “by pesuto”).
+- The activity bar icon is the same three-node graph, drawn in `currentColor` and without the mascot badge.
+
 ## [0.1.1] - 2026-10-17
 
 Maintenance release. No change to Flow, Catalog, diagnosis, or discovery.
