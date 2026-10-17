@@ -13,13 +13,19 @@ execute the skill, and it does not call a backend.
 
 ## Install
 
-Install Graphtale from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale).
+Install Graphtale from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pesuto.graphtale).
+In VS Code, open Extensions and search for `graphtale`, or run:
+
+```bash
+code --install-extension pesuto.graphtale
+```
+
+Install it from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale) as well.
 You can also download the `.vsix` attached to the
 [GitHub release](https://github.com/pesuto-dev/graphtale/releases) and install it
 with **Extensions: Install from VSIX...**.
 
-The package targets VS Code `^1.125.0` and compatible Cursor builds. A Visual
-Studio Marketplace listing comes later. Graphtale is not an npm library: do not
+The package targets VS Code `^1.125.0` and compatible Cursor builds. Graphtale is not an npm library: do not
 `import` it. Details are in [docs/install.md](docs/install.md).
 
 ## Usage
