@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import { parseProcedure } from "./parseProcedure";
 
 const roots: string[] = [];
@@ -25,8 +25,7 @@ const instructions = `
 2. Reply
 `;
 
-describe("flow frontmatter diagnosis", () => {
-  it("warns when the closing --- is missing and still reads the instructions", () => {
+it("warns when the closing --- is missing and still reads the instructions", () => {
     const { result, steps } = parse(`---
 name: unclosed
 description: missing closer
@@ -37,7 +36,7 @@ ${instructions}`);
     expect(result.graph.warnings).toContain("SKILL.md: Frontmatter is missing its closing ---.");
   });
 
-  it("includes broken YAML in the flow diagnosis with a line number and without the source line", () => {
+it("includes broken YAML in the flow diagnosis with a line number and without the source line", () => {
     const { result, steps } = parse(`---
 name: [broken
 description: this yaml is invalid
@@ -51,7 +50,7 @@ ${instructions}`);
     expect(result.graph.warnings?.join("\n")).not.toMatch(/name: \[broken/);
   });
 
-  it("warns when YAML frontmatter is only a scalar", () => {
+it("warns when YAML frontmatter is only a scalar", () => {
     const { result, steps } = parse(`---
 just a string
 ---
@@ -62,7 +61,7 @@ ${instructions}`);
     expect(result.graph.warnings).toContain("SKILL.md: YAML frontmatter must be a mapping, not a single value.");
   });
 
-  it("keeps the frontmatter name when a BOM precedes the fence", () => {
+it("keeps the frontmatter name when a BOM precedes the fence", () => {
     const { result, steps } = parse(`\uFEFF---
 name: bom-skill
 description: kept
@@ -75,7 +74,7 @@ ${instructions}`);
     expect(result.graph.warnings).toEqual([]);
   });
 
-  it("keeps the frontmatter name for a CRLF file with a BOM", () => {
+it("keeps the frontmatter name for a CRLF file with a BOM", () => {
     const skill = [
       "\uFEFF---",
       "name: bom-skill",
@@ -95,4 +94,3 @@ ${instructions}`);
     expect(result.diagnosis.confidence).toBe("high");
     expect(result.graph.warnings).toEqual([]);
   });
-});

@@ -1,21 +1,21 @@
 import { isMap, parseDocument, type YAMLError } from "yaml";
 import { frontmatterNeverCloses, stripBom } from "./text";
 
-export type Frontmatter = {
+export interface Frontmatter {
   name: string;
   description: string;
   error?: string;
-};
+}
 
 const NOT_A_MAPPING = "YAML frontmatter must be a mapping, not a single value.";
 
 export function parseFrontmatter(text: string): Frontmatter {
   const source = stripBom(text);
-  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return closedFrontmatter(source);
-  const doc = parseDocument(match[1]);
-  const error = doc.errors[0];
-  if (error) return { name: "", description: "", error: formatYamlError(error, 2) };
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  const body = match?.[1];
+  if (!body) return closedFrontmatter(source);
+  const doc = parseDocument(body);
+  if (doc.errors.length > 0) return { name: "", description: "", error: formatYamlError(doc.errors[0], 2) };
   if (doc.contents == null) return { name: "", description: "" };
   if (!isMap(doc.contents)) return { name: "", description: "", error: NOT_A_MAPPING };
   const parsed: unknown = doc.toJS();
@@ -47,5 +47,5 @@ function formatYamlError(error: YAMLError, bodyStartLine: number): string {
     .replace(/\.+$/, "")
     .trim();
   const reason = detail || "Check its syntax in SKILL.md";
-  return fileLine ? `Invalid YAML frontmatter at line ${fileLine}: ${reason}.` : `Invalid YAML frontmatter: ${reason}.`;
+  return fileLine ? `Invalid YAML frontmatter at line ${String(fileLine)}: ${reason}.` : `Invalid YAML frontmatter: ${reason}.`;
 }

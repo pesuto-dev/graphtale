@@ -1,143 +1,125 @@
 import * as path from "node:path";
-import type { Detection } from "./detectionTypes";
-import type { ResourceResolver } from "./procedureResources";
+import type { Detection } from "./procedureDetection";
 import type { ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
 import { stripFrontmatter } from "./text";
 
-export function buildStepGraph(skillName: string, skillRoot: string, detection: Detection, resolveResource: ResourceResolver): SkillGraph {
+export type ResourceResolver = (resource: string, sourcePath: string) => string | undefined;
+
+/** Turn detected steps into graph nodes. Path lookup stays behind `resolve`. */
+export function buildStepGraph(
+  skillName: string,
+  skillRoot: string,
+  detection: Detection,
+  resolve: ResourceResolver,
+): SkillGraph {
   const usedIds = new Set<string>();
-  const nodes = detection.steps.map((step, index) => stepNode({ detection, usedIds, step, index, resolveResource }));
-  const edges: SkillEdge[] = detection.links.map((link) => ({
-    from: requiredNode(nodes, link.from).id,
-    to: requiredNode(nodes, link.to).id,
-    label: link.label,
-    relationship: "explicit",
-    source: link.source,
+  const nodes: SkillNode[] = detection.steps.map((step, index) => {
+    const resource = step.resource ?? step.body;
+    const resourcePath = resolve(resource, step.source.path);
+    const kind = kindForResource(resource);
+    const baseId = detection.sourceKind === "P/N rows" ? `step:${step.display}` : `step:${String(index + 1)}`;
+    const id = usedIds.has(baseId) ? `${baseId}:${String(index + 1)}` : baseId;
+    usedIds.add(id);
+    return {
+      id, label: `${step.display}. ${plainTitle(step.title)}`, kind,
+      path: step.source.path, source: step.source,
+      resourcePath,
+      summary: firstLine(step.body) || step.title, excerpt: step.body.slice(0, 4000), uses: [],
+      isEntry: index === 0, isBlock: kind === "agent",
+    };
+  });
+  const edges: SkillEdge[] = detection.links.map(link => ({
+    from: nodes[link.from].id, to: nodes[link.to].id, label: link.label,
+    relationship: "explicit", source: link.source,
   }));
   for (const node of nodes) {
-    const outgoing = edges.filter((edge) => edge.from === node.id);
-    if (outgoing.length > 1 && outgoing.some((edge) => edge.label)) node.kind = "gate";
+    const outgoing = edges.filter(edge => edge.from === node.id);
+    if (outgoing.length > 1 && outgoing.some(edge => edge.label)) node.kind = "gate";
   }
   return { skillId: `${skillName}-procedure`, skillName, rootPath: skillRoot, nodes, edges };
 }
 
-type StepInput = {
-  detection: Detection;
-  usedIds: Set<string>;
-  step: Detection["steps"][number];
-  index: number;
-  resolveResource: ResourceResolver;
-};
-
-function stepNode(input: StepInput): SkillNode {
-  const resource = input.step.resource ?? input.step.body;
-  const kind = kindForResource(resource);
-  const baseId = input.detection.sourceKind === "P/N rows" ? `step:${input.step.display}` : `step:${input.index + 1}`;
-  const id = input.usedIds.has(baseId) ? `${baseId}:${input.index + 1}` : baseId;
-  input.usedIds.add(id);
-  return {
-    id,
-    label: `${input.step.display}. ${plainTitle(input.step.title)}`,
-    kind,
-    path: input.step.source.path,
-    source: input.step.source,
-    resourcePath: input.resolveResource(resource, input.step.source.path),
-    summary: firstLine(input.step.body) || input.step.title,
-    excerpt: input.step.body.slice(0, 4000),
-    uses: [],
-    isEntry: input.index === 0,
-    isBlock: kind === "agent",
-  };
+export interface FlowSource {
+  graph: SkillGraph;
+  skillFile: string;
+  skillText: string;
+  sourceText: string;
 }
 
-function requiredNode(nodes: SkillNode[], index: number): SkillNode {
-  const node = nodes[index];
-  if (!node) throw new Error(`Missing step ${index}.`);
-  return node;
-}
-
-export function wrapWithSource(graph: SkillGraph, skillFile: string, skillText: string, sourceText: string): SkillGraph {
-  const sourcePath = graph.nodes[0]?.source?.path;
-  const first = graph.nodes[0];
-  if (!sourcePath || !first) return graph;
-  const skillNode = skillNodeFor(skillFile, skillText);
+/** Prefix the flow with the skill file, and with the linked source when that is a different file. */
+export function wrapWithSource(source: FlowSource): SkillGraph {
+  const { graph, skillFile, skillText, sourceText } = source;
+  const sourcePath = graph.nodes.at(0)?.source?.path;
+  if (!sourcePath) return graph;
+  const skillNode = skillMarkdownNode(skillFile, skillText);
   for (const node of graph.nodes) node.isEntry = false;
-  if (path.resolve(sourcePath) === path.resolve(skillFile)) return sameFileGraph(graph, skillNode, first.id);
-  return linkedSourceGraph(graph, skillNode, first, { path: sourcePath, text: sourceText });
+  if (path.resolve(sourcePath) === path.resolve(skillFile)) return graphWithSkill(graph, skillNode);
+  return graphWithLinkedSource(graph, skillNode, sourcePath, sourceText);
 }
 
-function skillNodeFor(skillFile: string, skillText: string): SkillNode {
+function skillMarkdownNode(skillFile: string, skillText: string): SkillNode {
   return {
-    id: "skill-md",
-    label: "SKILL.md",
-    kind: "skill",
-    path: skillFile,
-    source: { path: skillFile, startLine: 1, endLine: 1 },
-    summary: firstLine(stripFrontmatter(skillText)),
-    uses: [],
-    isEntry: true,
+    id: "skill-md", label: "SKILL.md", kind: "skill", path: skillFile,
+    source: { path: skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(skillText)), uses: [], isEntry: true,
   };
 }
 
-function sameFileGraph(graph: SkillGraph, skillNode: SkillNode, firstId: string): SkillGraph {
-  const source: SkillEdge = { from: "skill-md", to: firstId, label: "source", relationship: "inferred", inferred: true };
-  return { ...graph, nodes: [skillNode, ...graph.nodes], edges: [source, ...graph.edges] };
+function graphWithSkill(graph: SkillGraph, skillNode: SkillNode): SkillGraph {
+  const entry = graph.nodes.at(0);
+  if (!entry) return graph;
+  return {
+    ...graph,
+    nodes: [skillNode, ...graph.nodes],
+    edges: [{ from: "skill-md", to: entry.id, label: "source", relationship: "inferred", inferred: true }, ...graph.edges],
+  };
 }
 
-function linkedSourceGraph(graph: SkillGraph, skillNode: SkillNode, first: SkillNode, source: { path: string; text: string }): SkillGraph {
+function graphWithLinkedSource(graph: SkillGraph, skillNode: SkillNode, sourcePath: string, sourceText: string): SkillGraph {
+  const entry = graph.nodes.at(0);
+  if (!entry) return graph;
   const sourceNode: SkillNode = {
-    id: "procedure-source",
-    label: path.basename(source.path),
-    kind: "reference",
-    path: source.path,
-    source: { path: source.path, startLine: 1, endLine: 1 },
-    summary: firstLine(stripFrontmatter(source.text)) || "Flow source",
-    excerpt: source.text.slice(0, 4000),
-    uses: [],
+    id: "procedure-source", label: path.basename(sourcePath), kind: "reference", path: sourcePath,
+    source: { path: sourcePath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(sourceText)) || "Flow source",
+    excerpt: sourceText.slice(0, 4000), uses: [],
   };
-  const edges: SkillEdge[] = [
-    { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
-  ];
-  if (graph.edges.some((edge) => edge.from === first.id)) {
-    edges.push({ from: "procedure-source", to: first.id, relationship: "inferred", inferred: true, label: "steps" });
-  }
-  return { ...graph, nodes: [skillNode, sourceNode, ...graph.nodes], edges: [...edges, ...graph.edges] };
+  const stepEdge = graph.edges.some(edge => edge.from === entry.id)
+    ? [{ from: "procedure-source", to: entry.id, relationship: "inferred" as const, inferred: true, label: "steps" }]
+    : [];
+  return {
+    ...graph,
+    nodes: [skillNode, sourceNode, ...graph.nodes],
+    edges: [
+      { from: "skill-md", to: "procedure-source", label: "source", relationship: "inferred", inferred: true },
+      ...stepEdge,
+      ...graph.edges,
+    ],
+  };
 }
 
-export type PartialProcedure = {
+export interface PartialSource {
   skillName: string;
   skillRoot: string;
   skillFile: string;
   skillText: string;
   linkedPath: string;
   linkedText: string;
-};
-
-export function partialResult(input: PartialProcedure): ProcedureResult {
-  const detail = `Found ${path.relative(input.skillRoot, input.linkedPath)} but no supported step structure.`;
-  return {
-    graph: {
-      skillId: `${input.skillName}-procedure`,
-      skillName: input.skillName,
-      rootPath: input.skillRoot,
-      nodes: [skillNodeFor(input.skillFile, input.skillText), linkedNode(input)],
-      edges: [{ from: "skill-md", to: "workflow", label: "workflow", confidence: "low", relationship: "unresolved" }],
-    },
-    diagnosis: { confidence: "partial", message: detail, fixPrompt: buildFixPrompt(input.skillName, detail) },
-  };
 }
 
-function linkedNode(input: PartialProcedure): SkillNode {
+/** A linked workflow exists, but it has no supported step structure. */
+export function partialResult(source: PartialSource): ProcedureResult {
+  const relative = path.relative(source.skillRoot, source.linkedPath);
+  const message = `Found ${relative} but no supported step structure.`;
   return {
-    id: "workflow",
-    label: path.basename(input.linkedPath),
-    kind: "reference",
-    path: input.linkedPath,
-    source: { path: input.linkedPath, startLine: 1, endLine: 1 },
-    summary: firstLine(stripFrontmatter(input.linkedText)),
-    excerpt: input.linkedText.slice(0, 4000),
-    uses: [],
+    graph: {
+      skillId: `${source.skillName}-procedure`, skillName: source.skillName, rootPath: source.skillRoot,
+      nodes: [
+        { id: "skill-md", label: "SKILL.md", kind: "skill", path: source.skillFile, source: { path: source.skillFile, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(source.skillText)), uses: [], isEntry: true },
+        { id: "workflow", label: path.basename(source.linkedPath), kind: "reference", path: source.linkedPath, source: { path: source.linkedPath, startLine: 1, endLine: 1 }, summary: firstLine(stripFrontmatter(source.linkedText)), excerpt: source.linkedText.slice(0, 4000), uses: [] },
+      ],
+      edges: [{ from: "skill-md", to: "workflow", label: "workflow", confidence: "low", relationship: "unresolved" }],
+    },
+    diagnosis: { confidence: "partial", message, fixPrompt: buildFixPrompt(source.skillName, message) },
   };
 }
 
@@ -152,6 +134,6 @@ function plainTitle(value: string): string {
 }
 
 function firstLine(text: string): string {
-  const line = text.split(/\r?\n/).map((item) => item.trim()).find((item) => item && !item.startsWith("#") && item !== "---");
+  const line = text.split(/\r?\n/).map(row => row.trim()).find(row => row && !row.startsWith("#") && row !== "---");
   return (line ?? "").slice(0, 220);
 }

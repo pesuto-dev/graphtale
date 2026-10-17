@@ -21,7 +21,11 @@ observe execution. Parsing never writes skill files.
   `N3 -> N5 (Question)` express P/N relationships. Multiple outgoing arrows express
   a fork; labels belong to their stated arrows. Arrows to absent or duplicate IDs,
   unsupported arrow expressions, disconnected components and cycles give partial
-  coverage. Cyclic edges are omitted because the viewer lays out a DAG.
+  coverage. Cyclic edges are omitted because the viewer lays out a DAG. The
+  diagnosis names that cycle and the omitted edge, a duplicate step id and its
+  lines, an arrow to a missing id with the arrow's source line, and a self-loop
+  with its source line. A disconnected component stays partial and keeps the
+  generic unresolved sentence when none of those findings apply.
 - P/N diagram fences can state routes with visual markers: `parallel` and `barrier`
   create a fan-out and rejoin; a labeled `↓` or `┐` creates a labeled branch; `join`
   reconnects it. Ordinary rows form a sequence only inside such a marked diagram.

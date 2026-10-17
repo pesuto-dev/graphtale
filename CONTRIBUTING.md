@@ -16,7 +16,9 @@ Useful commands:
 
 | Command | What it does |
 | --- | --- |
-| `npm run lint` | ESLint on TypeScript and script sources |
+| `npm run lint` | ESLint (`strict-type-checked`, `stylistic-type-checked`, size and complexity limits) |
+| `npm run lint:css` | stylelint (`stylelint-config-standard`) on `webview/**/*.css` |
+| `npm run check:sizes` | Fail when a TypeScript file exceeds 400 code lines or a CSS file exceeds 300 |
 | `npm run check` | Type-check the extension host and the webview |
 | `npm test` | Vitest (`src/**/*.test.ts` and `webview/**/*.test.ts`) |
 | `npm run validate` | Check committed skill fixtures |
@@ -24,9 +26,16 @@ Useful commands:
 | `npm run preview` | Browser preview of the webview with fixture data |
 | `npm run package` | Build and create a local `.vsix` (does not publish) |
 
-Before opening a pull request, run `npm run lint`, `npm run check`, `npm test`,
-and `npm run validate`. Run `npm run package` when you change the build,
-manifest, or files that ship in the VSIX.
+Before opening a pull request, run `npm run lint`, `npm run lint:css`,
+`npm run check:sizes`, `npm run check`, `npm test`, and `npm run validate`.
+Run `npm run package` when you change the build, manifest, or files that ship
+in the VSIX.
+
+Follow [docs/coding-standards.md](docs/coding-standards.md): one responsibility
+per module, named exports, presentational components, and the size limits in
+that file. When a file already misses a rule, the exception belongs in
+`eslint.exceptions.mjs` or `scripts/check-file-sizes.mjs` with a TODO, not in
+an `eslint-disable` comment. Do not add a new file to those lists to pass CI.
 
 `npm run preview` does not exercise the extension host. Host behavior still
 needs a local Cursor or VS Code **Run Extension** session
@@ -62,8 +71,9 @@ use so user-level discovery stays deterministic.
 5. Do not publish to npm, the Marketplace, or Open VSX, and do not push release
    tags, from a contribution.
 
-CI runs lint, type-check, tests, fixture validation, and a compile on Ubuntu
-and Windows for Node 22 and 24. It builds the VSIX on Ubuntu with Node 22.
+CI runs ESLint, stylelint, the file-size check, type-check, tests, fixture
+validation, and a compile on Ubuntu and Windows for Node 22 and 24. It builds
+the VSIX on Ubuntu with Node 22.
 
 ## Packaging notes
 
