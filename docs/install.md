@@ -7,8 +7,7 @@ Install it from [Open VSX](https://open-vsx.org/extension/pesuto/graphtale) as w
 Or download the `.vsix` attached to the [GitHub release](https://github.com/pesuto-dev/graphtale/releases)
 and use **Extensions: Install from VSIX...** in Cursor or VS Code. Reload the editor if it asks.
 
-Building a package from a checkout
-is covered in the [contributor guide](../CONTRIBUTING.md) (`npm ci && npm run package`).
+Building a package from a checkout is covered in the [contributor guide](../CONTRIBUTING.md) (`npm ci && npm run package`).
 Install that `.vsix` the same way.
 
 Open a workspace containing a supported skill location, or open its `SKILL.md`
