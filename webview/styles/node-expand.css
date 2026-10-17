@@ -1,0 +1,45 @@
+.expand-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expand-btn:hover {
+  color: var(--fg);
+  border-color: transparent;
+}
+
+.skill-node-expand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 4;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent);
+}
+
+.skill-node-summary {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.skill-node-uses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
