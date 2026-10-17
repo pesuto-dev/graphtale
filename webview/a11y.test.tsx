@@ -78,13 +78,17 @@ describe("compact node names", () => {
     const long = "1. Read the request and compare the evidence";
     expect(compactAccessibleName("reference", long)).toBe(`reference: ${long}`);
     const flow = toCompactFlow([node("step:1", "reference", { label: long })], []);
-    expect(flow.nodes[0]?.ariaLabel).toBe(`reference: ${long}`);
-    expect(flow.nodes[0]?.data.label.endsWith("…")).toBe(true);
+    const placed = flow.nodes[0];
+    if (!placed) {
+      throw new Error("compact flow has no node");
+    }
+    expect(placed.ariaLabel).toBe(`reference: ${long}`);
+    expect(placed.data.label.endsWith("…")).toBe(true);
 
     const nodeProps = {
       id: "step:1",
       type: "skill",
-      data: flow.nodes[0]!.data,
+      data: placed.data,
       selected: false,
       dragging: false,
       zIndex: 1,
@@ -102,7 +106,7 @@ describe("compact node names", () => {
     );
     const chip = document.querySelector(".skill-node.is-compact");
     expect(chip?.getAttribute("aria-label")).toBeNull();
-    expect(chip?.textContent).toContain(flow.nodes[0]!.data.label);
+    expect(chip?.textContent).toContain(placed.data.label);
   });
 });
 

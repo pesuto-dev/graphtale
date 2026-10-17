@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 import type { GraphView, LayoutDirection } from "@shared/protocol";
+import type { AppViewModel } from "./appModel";
+import type { ViewState } from "./useViewState";
 import { ViewTabs } from "./ViewTabs";
 
 export type AppToolbarProps = {
@@ -65,6 +67,30 @@ function ToolbarStats(props: AppToolbarProps): ReactElement {
       ) : null}
     </div>
   );
+}
+
+export function toolbarProps(input: {
+  state: ViewState;
+  model: AppViewModel;
+  onRefresh: () => void;
+}): AppToolbarProps {
+  const { state, model, onRefresh } = input;
+  return {
+    skillName: state.graph.skillName,
+    view: state.view,
+    stale: state.stale,
+    compact: state.compact,
+    direction: state.direction,
+    hint: model.hint,
+    inventoryCount: model.inventoryCount,
+    agentCount: model.agentCount,
+    gateCount: model.gateCount,
+    scriptCount: model.scriptCount,
+    onSwitchView: state.switchView,
+    onToggleCompact: state.toggleCompact,
+    onToggleDirection: state.toggleDirection,
+    onRefresh,
+  };
 }
 
 export function AppToolbar(props: AppToolbarProps): ReactElement {

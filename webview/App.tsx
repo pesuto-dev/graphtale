@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { deriveAppView } from "./appModel";
-import { AppToolbar } from "./AppToolbar";
+import { AppToolbar, toolbarProps } from "./AppToolbar";
 import { FlowPane } from "./FlowPane";
 import { Inspector } from "./Inspector";
 import { useHostMessages } from "./useHostMessages";
@@ -27,22 +27,7 @@ function AppShell(): ReactElement {
   };
   return (
     <div className={state.inspectorOpen ? "app" : "app inspector-closed"}>
-      <AppToolbar
-        skillName={state.graph.skillName}
-        view={state.view}
-        stale={state.stale}
-        compact={state.compact}
-        direction={state.direction}
-        hint={model.hint}
-        inventoryCount={model.inventoryCount}
-        agentCount={model.agentCount}
-        gateCount={model.gateCount}
-        scriptCount={model.scriptCount}
-        onSwitchView={state.switchView}
-        onToggleCompact={state.toggleCompact}
-        onToggleDirection={state.toggleDirection}
-        onRefresh={refresh}
-      />
+      <AppToolbar {...toolbarProps({ state, model, onRefresh: refresh })} />
       <div
         className="main main-procedure"
         role="tabpanel"

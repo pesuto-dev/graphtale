@@ -101,6 +101,37 @@ function DiagnosisBanner({
   );
 }
 
+function FlowCanvas({ state, model }: { state: ViewState; model: AppViewModel }): ReactElement {
+  const nodes = model.flow.nodes.map((node) => ({
+    ...node,
+    selected: node.id === state.selectedId,
+  }));
+  return (
+    <ReactFlow
+      key={`${state.graph.rootPath}-${state.view}-${state.direction}-${state.compact}-${state.fitNonce}`}
+      nodes={nodes}
+      edges={presentEdges(model.flow.edges, state.selectedId)}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
+      onNodeClick={state.onNodeClick}
+      onNodeDoubleClick={state.onNodeDoubleClick}
+      nodesDraggable={false}
+      nodesConnectable={false}
+      nodesFocusable
+      edgesFocusable={false}
+      elementsSelectable
+      fitView
+      fitViewOptions={state.compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS}
+      minZoom={0.1}
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background gap={18} size={1} />
+      <Controls showInteractive={false} />
+    </ReactFlow>
+  );
+}
+
 function SkillGraph({
   state,
   model,
@@ -110,35 +141,10 @@ function SkillGraph({
   model: AppViewModel;
   onGraphKeyDown: KeyboardEventHandler<HTMLDivElement>;
 }): ReactElement {
-  const nodes = model.flow.nodes.map((node) => ({
-    ...node,
-    selected: node.id === state.selectedId,
-  }));
   return (
     <>
       <div className="graph" ref={state.graphContainerRef} onKeyDownCapture={onGraphKeyDown}>
-        <ReactFlow
-          key={`${state.graph.rootPath}-${state.view}-${state.direction}-${state.compact}-${state.fitNonce}`}
-          nodes={nodes}
-          edges={presentEdges(model.flow.edges, state.selectedId)}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          defaultEdgeOptions={defaultEdgeOptions}
-          onNodeClick={state.onNodeClick}
-          onNodeDoubleClick={state.onNodeDoubleClick}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          nodesFocusable
-          edgesFocusable={false}
-          elementsSelectable
-          fitView
-          fitViewOptions={state.compact ? COMPACT_FIT_VIEW_OPTIONS : FIT_VIEW_OPTIONS}
-          minZoom={0.1}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background gap={18} size={1} />
-          <Controls showInteractive={false} />
-        </ReactFlow>
+        <FlowCanvas state={state} model={model} />
       </div>
       <Legend showGate={model.gateCount > 0} showProcedureHints />
     </>
