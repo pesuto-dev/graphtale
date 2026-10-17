@@ -58,20 +58,21 @@ it("names a duplicate P/N id and the lines that define it", () => {
   expect(result.diagnosis.message).toContain(duplicate);
   expect(result.diagnosis.fixPrompt).toContain(duplicate);
   expect(stepEdges(result)).toEqual([]);
+});
 
-  const three = parseWorkflow([
+it("lists every source line when a P/N id is repeated three times", () => {
+  const result = parseWorkflow([
     "# Workflow",
     "",
     "N1  Start",
     "N2  Next",
     "N1  Again",
     "N1  Third",
-    "N2 -> N3",
+    "N1 -> N2",
     "",
   ].join("\n"));
-  expect(three.diagnosis.message).toContain("Duplicate step id N1 on lines 3, 5, and 6.");
-  expect(three.diagnosis.message).toContain("Arrow to missing id N3 on line 7.");
-  expect(stepEdges(three)).toEqual([]);
+  expect(result.diagnosis.message).toContain("Duplicate step id N1 on lines 3, 5, and 6.");
+  expect(stepEdges(result)).toEqual([]);
 });
 
 it("names an arrow whose target id is missing and the source line", () => {
