@@ -3,10 +3,10 @@ import * as path from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
   discoverSkills,
-  parseFrontmatter,
   readFrontmatter,
   type DiscoverOptions,
 } from "./discover";
+import { parseFrontmatter } from "./frontmatter";
 import type { CatalogSkill } from "./shared/protocol";
 
 export type ValidationKind = "yaml" | "io" | "name" | "description";

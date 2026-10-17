@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { FLOW_MAX_STEPS } from "./fileAccess";
 import { skillDocumentNode, procedureSourceNode } from "./flowNodes";
-import { EXCLUDED, HEADING, visibleLines } from "./procedureDetection";
+import { EXCLUDED, HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
 import { firstLine } from "./text";
@@ -64,7 +64,7 @@ export function detectUnorderedHeadings(text: string): HeadingHit[] {
     const heading = visible[i].match(HEADING);
     if (!heading) continue;
     const level = heading[1].length;
-    closeParents(parents, level);
+    popParentsAtOrAbove(parents, level);
     const title = heading[2].replace(/\*\*/g, "").trim();
     const excluded = EXCLUDED.test(heading[2]) || parents.some((parent) => parent.excluded);
     parents.push({ level, excluded });
@@ -107,14 +107,6 @@ function diagnosisFor(skillName: string, fileName: string, count: number): Proce
     fixPrompt: buildFixPrompt(skillName, detail),
     rewriteExample: HEADING_REWRITE_EXAMPLE,
   };
-}
-
-function closeParents(parents: HeadingParent[], level: number): void {
-  while (parents.length > 0) {
-    const parent = parents[parents.length - 1];
-    if (parent.level < level) return;
-    parents.pop();
-  }
 }
 
 function buildGraph(input: BuiltHeadingGraph): SkillGraph {

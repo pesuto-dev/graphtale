@@ -155,10 +155,34 @@ it("prefers SKILL.md headings when a linked workflow has neither a procedure nor
 it("stops after the flow step cap and keeps the heading diagnosis", () => {
   const lines = Array.from({ length: 501 }, (_, index) => `## Step ${String(index + 1)}`);
   const result = parse({ "SKILL.md": `${lines.join("\n")}\n` });
+  const cap = `Flow shows ${String(FLOW_MAX_STEPS)} of ${String(FLOW_MAX_STEPS + 1)} steps.`;
   expect(steps(result)).toHaveLength(500);
-  expect(result.graph.warnings).toContain(`Flow shows ${String(FLOW_MAX_STEPS)} of ${String(FLOW_MAX_STEPS + 1)} steps.`);
+  expect(result.graph.warnings).toContain(cap);
+  expect(result.diagnosis.message).toContain(cap);
   expect(result.diagnosis.message).toContain(HEADING_HEURISTIC);
   expect(result.diagnosis.confidence).toBe("partial");
+});
+
+it("keeps heading steps when SKILL.md frontmatter never closes", () => {
+  const result = parse({
+    "SKILL.md": [
+      "---",
+      "name: unclosed",
+      "description: missing closer",
+      "",
+      "## Gather",
+      "Read the ticket.",
+      "",
+      "## Classify",
+      "Decide bug or question.",
+    ].join("\n"),
+  });
+  expect(steps(result).map((node) => node.label)).toEqual(["Gather", "Classify"]);
+  expect(result.diagnosis.confidence).toBe("partial");
+  expect(result.diagnosis.message).toContain(HEADING_HEURISTIC);
+  expect(result.diagnosis.message).toMatch(/SKILL\.md: Frontmatter is missing its closing ---/);
+  expect(result.graph.warnings).toContain("SKILL.md: Frontmatter is missing its closing ---.");
+  expect(result.diagnosis.rewriteExample).toBe(HEADING_REWRITE_EXAMPLE);
 });
 
 it("documents the same rewrite example the banner shows", () => {

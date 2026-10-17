@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { parse as parseYaml } from "yaml";
 import { readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
+import { parseFrontmatter, type Frontmatter } from "./frontmatter";
 import type { CatalogSkill } from "./shared/protocol";
 
 export const WORKSPACE_SKILL_DIRS = [
@@ -28,11 +28,7 @@ export type DiscoverOptions = {
   onWarning?: (message: string) => void;
 };
 
-export type Frontmatter = {
-  name: string;
-  description: string;
-  error?: string;
-};
+export type { Frontmatter } from "./frontmatter";
 
 export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
   const homedir = options.homedir ?? os.homedir();
@@ -63,35 +59,56 @@ export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
 }
 
 function claudePluginSkillDirs(homedir: string): string[] {
-  const installedPath = path.join(homedir, ".claude", "plugins", "installed_plugins.json");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(fs.readFileSync(installedPath, "utf8"));
-  } catch {
-    return [];
-  }
-  if (!parsed || typeof parsed !== "object") return [];
-  const plugins = (parsed as Record<string, unknown>).plugins;
-  if (!plugins || typeof plugins !== "object") return [];
+  const plugins = pluginIndex(readJson(path.join(homedir, ".claude", "plugins", "installed_plugins.json")));
+  if (!plugins) return [];
+  return Object.values(plugins).flatMap(pluginSkillRoots);
+}
 
-  const roots: string[] = [];
-  for (const value of Object.values(plugins as Record<string, unknown>)) {
-    if (!Array.isArray(value)) continue;
-    for (const install of value) {
-      if (!install || typeof install !== "object") continue;
-      const installPath = (install as Record<string, unknown>).installPath;
-      if (typeof installPath === "string" && installPath.length > 0) {
-        roots.push(path.join(installPath, "skills"));
-      }
-    }
+function pluginIndex(parsed: unknown): object | undefined {
+  if (typeof parsed !== "object" || parsed === null || !("plugins" in parsed)) return undefined;
+  const plugins = parsed.plugins;
+  if (typeof plugins !== "object" || plugins === null) return undefined;
+  return plugins;
+}
+
+/** A missing plugin index is normal; only a readable object contributes roots. */
+function readJson(file: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
+    return parsed;
+  } catch {
+    return undefined;
   }
-  return roots;
+}
+
+function pluginSkillRoots(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(installSkillRoot);
+}
+
+function installSkillRoot(install: unknown): string[] {
+  if (typeof install !== "object" || install === null || !("installPath" in install)) return [];
+  const installPath = install.installPath;
+  if (typeof installPath !== "string" || installPath.length === 0) return [];
+  return [path.join(installPath, "skills")];
 }
 
 function listSkillsIn(root: string, onWarning?: (message: string) => void): CatalogSkill[] {
-  if (!isDirectory(root)) {
-    return [];
+  const entries = inventoryEntries(root, onWarning);
+  const skills: CatalogSkill[] = [];
+  for (const entry of entries) {
+    if (skills.length >= INVENTORY_MAX_FILES) {
+      onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills in ${root}.`);
+      break;
+    }
+    const skill = skillFromEntry(root, entry);
+    if (skill) skills.push(skill);
   }
+  return skills;
+}
+
+function inventoryEntries(root: string, onWarning?: (message: string) => void): fs.Dirent[] {
+  if (!isDirectory(root)) return [];
   const entries: fs.Dirent[] = [];
   let directory: fs.Dir | undefined;
   try {
@@ -99,35 +116,29 @@ function listSkillsIn(root: string, onWarning?: (message: string) => void): Cata
     let entry: fs.Dirent | null;
     while (entries.length < INVENTORY_MAX_ENTRIES && (entry = directory.readSync())) entries.push(entry);
     if (entries.length === INVENTORY_MAX_ENTRIES) onWarning?.(`Skill discovery reached its entry limit in ${root}.`);
-  } catch { onWarning?.(`Could not discover skills in ${root}.`); return []; }
-  finally { directory?.closeSync(); }
-  const skills: CatalogSkill[] = [];
-  for (const entry of entries) {
-    if (skills.length >= INVENTORY_MAX_FILES) { onWarning?.(`Skill discovery stopped after ${INVENTORY_MAX_FILES} skills in ${root}.`); break; }
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) {
-      continue;
-    }
-    const skillRoot = path.join(root, entry.name);
-    if (!isDirectory(skillRoot)) {
-      continue;
-    }
-    const skillFile = path.join(skillRoot, SKILL_FILE);
-    if (!fs.existsSync(skillFile)) {
-      continue;
-    }
-    const meta = readFrontmatter(skillFile);
-    const description = meta.error
-      ? `Invalid SKILL.md frontmatter: ${meta.error}`
-      : meta.description;
-    skills.push({
-      id: meta.name || entry.name,
-      name: meta.name || entry.name,
-      description,
-      rootPath: skillRoot,
-      frontmatterError: meta.error,
-    });
+  } catch {
+    onWarning?.(`Could not discover skills in ${root}.`);
+    return [];
+  } finally {
+    directory?.closeSync();
   }
-  return skills;
+  return entries;
+}
+
+function skillFromEntry(root: string, entry: fs.Dirent): CatalogSkill | undefined {
+  if (!entry.isDirectory() && !entry.isSymbolicLink()) return undefined;
+  const skillRoot = path.join(root, entry.name);
+  if (!isDirectory(skillRoot)) return undefined;
+  const skillFile = path.join(skillRoot, SKILL_FILE);
+  if (!fs.existsSync(skillFile)) return undefined;
+  const meta = readFrontmatter(skillFile);
+  return {
+    id: meta.name || entry.name,
+    name: meta.name || entry.name,
+    description: meta.error ? `Invalid SKILL.md frontmatter: ${meta.error}` : meta.description,
+    rootPath: skillRoot,
+    frontmatterError: meta.error,
+  };
 }
 
 function discoveryKey(rootPath: string): string {
@@ -149,31 +160,6 @@ export function readFrontmatter(skillFile: string): Frontmatter {
       error: err instanceof Error ? err.message : "Could not read SKILL.md",
     };
   }
-}
-
-export function parseFrontmatter(text: string): Frontmatter {
-  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) {
-    return { name: "", description: "" };
-  }
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(match[1]);
-  } catch {
-    return {
-      name: "",
-      description: "",
-      error: "Invalid YAML frontmatter. Check its syntax in SKILL.md.",
-    };
-  }
-  if (!parsed || typeof parsed !== "object") {
-    return { name: "", description: "" };
-  }
-  const record = parsed as Record<string, unknown>;
-  return {
-    name: typeof record.name === "string" ? record.name : "",
-    description: typeof record.description === "string" ? record.description : "",
-  };
 }
 
 function isDirectory(dir: string): boolean {
