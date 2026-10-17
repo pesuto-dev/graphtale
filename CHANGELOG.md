@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Prose skills with no numbered list and no P/N steps show `##` and `###` headings as unordered steps. Each step keeps the heading’s source line. The diagnosis is `heuristic: headings, no order`, and the Flow banner includes a short rewrite example (prose headings to numbered steps). The same example is in [parser coverage](docs/parser-coverage.md). A skill with no `##` or `###` heading still has an empty Flow.
+- Prose skills with no numbered list and no P/N steps show `##` and `###` headings as unordered steps. Each step keeps the heading’s source line. The diagnosis is `heuristic: headings, no order`, and the Flow banner includes a short rewrite example (prose headings to numbered steps). The same example is in [parser coverage](docs/parser-coverage.md). A skill with no `##` or `###` heading still has an empty Flow. More than 500 headings warn `Flow shows 500 of N steps.`
 
 ### Changed
 
