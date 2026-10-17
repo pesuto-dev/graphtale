@@ -157,7 +157,8 @@ describe("heading heuristic", () => {
   });
 
   it("documents the same rewrite example the banner shows", () => {
-    const doc = fs.readFileSync(path.resolve(__dirname, "../docs/parser-coverage.md"), "utf8");
+    // actions/checkout on Windows writes CRLF; the banner string uses LF.
+    const doc = fs.readFileSync(path.resolve(__dirname, "../docs/parser-coverage.md"), "utf8").replace(/\r\n/g, "\n");
     expect(doc).toContain(HEADING_HEURISTIC);
     expect(doc).toContain(HEADING_REWRITE_EXAMPLE);
     expect(HEADING_REWRITE_EXAMPLE).toContain("## Gather");
