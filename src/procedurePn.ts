@@ -1,7 +1,8 @@
 import { applyDiagramLinks, lineIsDiagramMarker } from "./procedureDiagram";
 import type { DetectedLink, DetectedStep, Detection } from "./procedureDetection";
 import { cycleFinding, duplicateFindings, reaches } from "./procedureFindings";
-import { EXCLUDED, HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 
 interface PnGraph { links: DetectedLink[]; findings: string[]; invalid: boolean }
 
@@ -16,10 +17,10 @@ interface PnLink {
 }
 
 /** P/N rows in a workflow document. Program fences never count. */
-export function extractPn(text: string, sourcePath: string): Detection | undefined {
+export function extractPn(text: string, sourcePath: string, vocabulary: Vocabulary = ENGLISH): Detection | undefined {
   if (!/\b(?:workflow|operations)\.md$/i.test(sourcePath) && !/^#{1,6}\s+workflow\b/im.test(text)) return undefined;
-  const lines = readPnLines(text);
-  const steps = readPnSteps(lines, sourcePath);
+  const lines = readPnLines(text, vocabulary);
+  const steps = readPnSteps(lines, sourcePath, vocabulary);
   if (!steps.length) return undefined;
   const graph = emptyPnGraph(steps);
   scanPnStatements(lines, steps, sourcePath, graph);
@@ -34,25 +35,25 @@ export function extractPn(text: string, sourcePath: string): Detection | undefin
   };
 }
 
-function readPnLines(text: string): string[] {
+function readPnLines(text: string, vocabulary: Vocabulary): string[] {
   const parents: { level: number; excluded: boolean }[] = [];
-  return visibleLines(text, true).map(line => {
+  return visibleLines(text, true, vocabulary).map(line => {
     const heading = line.match(HEADING);
     if (!heading) return parents.some(parent => parent.excluded) ? "" : line;
     const level = heading[1].length;
     popParentsAtOrAbove(parents, level);
-    parents.push({ level, excluded: EXCLUDED.test(heading[2]) || parents.some(parent => parent.excluded) });
+    parents.push({ level, excluded: vocabulary.isSkipSection(heading[2]) || parents.some(parent => parent.excluded) });
     return parents.some(parent => parent.excluded) ? "" : line;
   });
 }
 
-function readPnSteps(lines: string[], sourcePath: string): DetectedStep[] {
+function readPnSteps(lines: string[], sourcePath: string, vocabulary: Vocabulary): DetectedStep[] {
   const steps: DetectedStep[] = [];
   let excluded = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines.at(index) ?? "";
     const heading = HEADING.exec(line);
-    if (heading) excluded = EXCLUDED.test(heading[2]);
+    if (heading) excluded = vocabulary.isSkipSection(heading[2]);
     if (excluded) continue;
     const row = /^\s*(P|N\d+[a-z]?)\s+(.+?)(?:\s{2,}(.+))?\s*$/i.exec(line);
     const sequential = /^(P|N\d+[a-z]?)\s+(?:then|next|(?:is\s+)?followed by|continue(?:s)?\s+(?:with|to)|go(?:es)?\s+to)\s+(P|N\d+[a-z]?)\.?$/i.exec(line.trim());

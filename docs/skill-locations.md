@@ -37,4 +37,6 @@ plugin's `skills/` directory.
 
 Codex may add `agents/openai.yaml` next to `SKILL.md`. Catalog shows that file
 when it exists. Flow still comes from markdown (numbered steps, P/N graph,
-First Steps / Instructions, or `workflow.md` / `operations.md`).
+First Steps / Instructions, `workflow.md` / `operations.md`, or a routing table
+to local files). Section names are English unless `~/.graphtale/languages.json`
+adds others; see [parser coverage](parser-coverage.md).

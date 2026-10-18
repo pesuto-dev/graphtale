@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { readTextFile, PREVIEW_READ_LIMIT_BYTES } from "./fileAccess";
 import { resolveOpenTarget } from "./viewerAccess";
 import { discoverSkills } from "./discover";
 import { parseProcedure } from "./parseProcedure";
+import { languagesFile } from "./procedureVocabulary";
 import { parseSkill, wrapperAroundLink } from "./parseSkill";
 import { extraWatchFiles, isWatchedChange } from "./shared/watch";
 import type {
@@ -152,7 +154,19 @@ export class GraphtalePanel {
       watcher.onDidCreate(mark),
       watcher.onDidDelete(mark),
       vscode.workspace.onDidSaveTextDocument((doc) => this.markStale(doc.uri.fsPath)),
+      this.watchLanguages(),
     );
+  }
+
+  /** languages.json lives outside the workspace and may not exist yet, so poll its stat. */
+  private watchLanguages(): vscode.Disposable {
+    const file = languagesFile(os.homedir());
+    this.watchedFiles.push(file);
+    const listener = (current: fs.Stats, previous: fs.Stats): void => {
+      if (current.mtimeMs !== previous.mtimeMs) this.markStale(file);
+    };
+    fs.watchFile(file, { interval: 2000 }, listener).unref();
+    return { dispose: () => fs.unwatchFile(file, listener) };
   }
 
   private markStale(filePath: string): void {
@@ -162,10 +176,11 @@ export class GraphtalePanel {
     if (this.staleTimer) {
       clearTimeout(this.staleTimer);
     }
+    // Refresh on its own so a saved fix shows up without a click.
     this.staleTimer = setTimeout(() => {
-      this.stale = true;
-      this.post({ type: "stale", stale: true });
-    }, 120);
+      this.staleTimer = undefined;
+      this.refresh();
+    }, 300);
   }
 
   private disposeWatch(): void {
@@ -205,6 +220,9 @@ export class GraphtalePanel {
         return;
       case "copyText":
         void this.copyText(message.text);
+        return;
+      case "openSkillFile":
+        void this.openSkillFile();
         return;
       default: {
         const _exhaustive: never = message;
@@ -246,6 +264,17 @@ export class GraphtalePanel {
       this.post({ type: "copyResult", ok: true });
     } catch {
       this.post({ type: "copyResult", ok: false });
+    }
+  }
+
+  private async openSkillFile(): Promise<void> {
+    const root = this.graph?.rootPath ?? this.attemptedRoot;
+    if (!root) return;
+    const file = path.join(root, "SKILL.md");
+    try {
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(vscode.Uri.file(file)), { preview: true, viewColumn: vscode.ViewColumn.One });
+    } catch {
+      this.reportError(`Could not open ${file}. The file may have moved or become unreadable.`, true);
     }
   }
 

@@ -18,9 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flow diagnosis names a P/N cycle and the edge left out of the graph, a duplicate P/N id and the lines where it appears, an arrow to a missing id with that arrow’s source line, and a self-loop with its source line. Other partial flows still say that some relationships are unresolved.
 - A flow longer than 500 steps warns with the total number of steps and the number shown.
 - Prose skills with no numbered list and no P/N steps show `##` and `###` headings as unordered steps. Each step keeps the heading’s source line. The diagnosis is `heuristic: headings, no order`, and the Flow banner includes a short rewrite example (prose headings to numbered steps). The same example is in [parser coverage](docs/parser-coverage.md). A skill with no `##` or `###` heading still has an empty Flow. More than 500 headings warn `Flow shows 500 of N steps.`
+- A SKILL.md that routes to separate local files from a table or bullet list (a router skill) shows each route as an unordered branch linked to its file. The diagnosis is `router: routes to files, no order`. This check reads structure and paths, not words, so it works in any language.
+- `~/.graphtale/languages.json` adds step and skip section headings for languages other than English. A registered language applies to every skill. A malformed file is ignored with a Flow warning. English stays the default; no other language ships built in.
+- **Open SKILL.md** in the Flow diagnosis banner.
 - README demo of opening a `SKILL.md`, showing Flow, clicking a step, and highlighting that source line in the editor (`docs/media/demo.gif`). `.vscodeignore` keeps `docs/media` out of the VSIX.
 
 ### Changed
+
+- The Flow diagnosis banner leads with **Copy fix prompt** and says in one line what happens next. The prompt names the skill file, warns when it is an installed plugin copy that an update overwrites, lists the recognized headings, asks the AI tool for a diff and approval before saving, and offers two options: repair the skill with English structure, or register the skill's language in `~/.graphtale/languages.json`. See [ADR 0010](docs/adr/0010-fix-path-primary-languages-on-demand.md).
+- Flow refreshes on its own shortly after a watched skill file or `languages.json` changes. Windows paths are compared case-insensitively, so changes reported as `c:\` match a skill found under `C:\`.
 
 - Marketplace icon is the Pesuto sticker graph: an ink tile with lime, warm, and green nodes and a lime mascot badge. The gallery banner is `#0F0F0E` on the dark theme.
 - Listing title is “Graphtale – Agent Skill Flow Viewer (SKILL.md)”. The description states the local, read-only SKILL.md flow and names Cursor, Claude Code, and Codex. Category `AI` is added next to `Visualization`. Keywords keep the previous terms and add the listing phrases (skill viewer, skill flow, claude code, codex skills, and related), deduplicated, 23 in total.

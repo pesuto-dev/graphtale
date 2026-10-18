@@ -1,7 +1,7 @@
+import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import { maskFrontmatter } from "./text";
 
 export const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
-export const EXCLUDED = /\b(examples?|alternatives?|options?|appendix|notes|reference|choices)\b/i;
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 
@@ -47,7 +47,7 @@ function fencedLine(delimiter: RegExpMatchArray | undefined, fence: Fence, close
  * Keep original line offsets. Blank hidden lines stay in place.
  * `pn` keeps plain-text fences that can hold a P/N table.
  */
-export function visibleLines(text: string, pn = false): string[] {
+export function visibleLines(text: string, pn = false, vocabulary: Vocabulary = ENGLISH): string[] {
   let fence: Fence | undefined;
   let excluded = false;
   return maskFrontmatter(text).map((line) => {
@@ -57,7 +57,7 @@ export function visibleLines(text: string, pn = false): string[] {
       return hidden ?? line;
     }
     const heading = HEADING.exec(line);
-    if (heading) excluded = EXCLUDED.test(heading[2]);
+    if (heading) excluded = vocabulary.isSkipSection(heading[2]);
     if (!delimiter) return line;
     fence = openFence(delimiter, excluded, pn);
     return "";

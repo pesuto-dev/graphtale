@@ -62,8 +62,8 @@ description: Review a change using its source evidence.
 
 Open that `SKILL.md` and choose **Open Agent Skill Flow**. The six numbered
 instructions become six source-linked steps. Select a step and choose **Open
-instruction** to jump to the source line. **Refresh** after you edit the file.
-The viewer never writes the skill.
+instruction** to jump to the source line. Flow refreshes on its own after you
+save the file. The viewer never writes the skill.
 
 ![Complete six-step review in Compact view](assets/marketplace/procedure-analyse-ticket.png)
 
@@ -87,9 +87,9 @@ Inside the webview:
 - **Flow** is the supported instruction graph. **Go to step** finds a step by title or number, centers it, and opens the inspector. Ctrl or Cmd+F focuses that field. **Compact** packs the same graph into wrapped rows. Outside Compact, **Layout** switches between top-to-bottom and left-to-right. Nodes are not draggable and edges are not editable.
 - **Catalog** is a grouped file inventory. Search filters by file name, path, and description. It does not imply execution order.
 - The inspector shows the selected step’s source text. **Open instruction** (or **Open file** when the node has no instruction range) and **Open referenced resource** open the editor. Double-click a node to open its file.
-- A diagnosis banner appears when coverage is partial or missing. **Copy clarification prompt** copies text to the clipboard only when you ask. High confidence means the recognized structure has supported relationships. It is not a probability that every sentence was understood.
+- A diagnosis banner appears when coverage is partial or missing. **Copy fix prompt** copies a prompt for your AI chat to the clipboard. It names the skill file, asks the AI tool to propose a diff for your approval, and offers either an English repair or registering the skill's language. **Open SKILL.md** opens the file. High confidence means the recognized structure has supported relationships. It is not a probability that every sentence was understood.
 
-There is no `configuration` contribution and no account or API key.
+There is no `configuration` contribution and no account or API key. Section headings are English by default. To recognize headings in another language, list them in `~/.graphtale/languages.json`; the fix prompt explains the format.
 
 ### Package entry
 

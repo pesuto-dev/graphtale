@@ -4,11 +4,13 @@ import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS } from "./fileAcce
 import { parseFrontmatter } from "./frontmatter";
 import { procedureFromHeadings } from "./headingFallback";
 import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillGraph } from "./shared/protocol";
-import { emptyDiagnosis } from "./shared/protocol";
+import { emptyDiagnosis, withFixContext } from "./shared/protocol";
 import { flowDiagnosis, limitFlowSteps } from "./procedureDiagnosis";
 import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
+import { procedureFromRouter } from "./procedureRouter";
+import { languagesFile, loadVocabulary, type Vocabulary } from "./procedureVocabulary";
 import { frontmatterNeverCloses, stripBom } from "./text";
 
 export interface ParseProcedureOptions { skillRoot: string; catalog: CatalogSkill[]; homedir?: string }
@@ -26,6 +28,7 @@ interface ProcedureLoad {
   warnings: string[];
   candidates: ProcedureCandidate[];
   linked?: string;
+  vocabulary: Vocabulary;
 }
 
 export function parseProcedure(options: ParseProcedureOptions): ProcedureResult {
@@ -50,6 +53,8 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
   const meta = parseFrontmatter(skillText);
   if (meta.error) warnings.push(`SKILL.md: ${meta.error}`);
   const homedir = options.homedir ?? os.homedir();
+  const languages = loadVocabulary(homedir);
+  if (languages.warning) warnings.push(languages.warning);
   const workflowPath = findLinkedPath(skillText, skillRoot, homedir, "workflow.md");
   const operationsPath = findLinkedPath(skillText, skillRoot, homedir, "operations.md");
   return {
@@ -57,6 +62,7 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
     skillRoot, skillFile, skillText, homedir, warnings,
     candidates: procedureCandidates({ skillFile, skillText, workflowPath, operationsPath, readInput }),
     linked: workflowPath ?? operationsPath,
+    vocabulary: languages.vocabulary,
   };
 }
 
@@ -80,7 +86,7 @@ function procedureCandidates(source: ProcedureCandidateSource): ProcedureCandida
 
 function procedureFromCandidate(loaded: ProcedureLoad, candidate: { path: string; text: string }): ProcedureResult | undefined {
   noteUnclosed(loaded, candidate);
-  const found = detectSteps(candidate.text, candidate.path);
+  const found = detectSteps(candidate.text, candidate.path, loaded.vocabulary);
   if (!found || found.steps.length < 1) return undefined;
   const capped = limitFlowSteps(found, FLOW_MAX_STEPS);
   if (capped.warning) loaded.warnings.push(capped.warning);
@@ -95,13 +101,13 @@ function procedureFromCandidate(loaded: ProcedureLoad, candidate: { path: string
     skillText: loaded.skillText,
     sourceText: candidate.text,
   });
-  return finish(graph, flowDiagnosis({
+  return finish(loaded, graph, flowDiagnosis({
     detection: capped.detection,
     sourceName: path.basename(candidate.path),
     skillName: loaded.skillName,
     warning: capped.warning,
     hasWarnings: loaded.warnings.length > 0,
-  }), loaded.warnings);
+  }));
 }
 
 function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): void {
@@ -111,6 +117,8 @@ function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): voi
 }
 
 function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
+  const router = procedureFromRouter(loaded);
+  if (router) return finish(loaded, router.graph, router.diagnosis);
   const headings = procedureFromHeadings({
     skillName: loaded.skillName,
     skillRoot: loaded.skillRoot,
@@ -118,8 +126,9 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
     skillText: loaded.skillText,
     candidates: loaded.candidates,
     warnings: loaded.warnings,
+    vocabulary: loaded.vocabulary,
   });
-  if (headings) return finish(headings.graph, headings.diagnosis, loaded.warnings);
+  if (headings) return finish(loaded, headings.graph, headings.diagnosis);
   if (!loaded.linked) {
     const graph: SkillGraph = {
       skillId: `${loaded.skillName}-procedure`,
@@ -128,7 +137,7 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
       nodes: [],
       edges: [],
     };
-    return finish(graph, emptyDiagnosis(loaded.skillName), loaded.warnings);
+    return finish(loaded, graph, emptyDiagnosis(loaded.skillName));
   }
   const result = partialResult({
     skillName: loaded.skillName,
@@ -138,15 +147,20 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
     linkedPath: loaded.linked,
     linkedText: readText(loaded.linked),
   });
-  return finish(result.graph, result.diagnosis, loaded.warnings);
+  return finish(loaded, result.graph, result.diagnosis);
 }
 
 /** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
-function finish(graph: SkillGraph, diagnosis: ProcedureDiagnosis, warnings: string[]): ProcedureResult {
-  const notes = [...new Set([...(graph.warnings ?? []), ...warnings])];
+function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDiagnosis): ProcedureResult {
+  const notes = [...new Set([...(graph.warnings ?? []), ...loaded.warnings])];
   const extra = notes.filter(note => !diagnosis.message.includes(note));
   const message = extra.length > 0 ? `${diagnosis.message} ${extra.join(" ")}` : diagnosis.message;
-  const fixPrompt = extra.length > 0 ? `${diagnosis.fixPrompt}\n\nAlso observed:\n${extra.join("\n")}` : diagnosis.fixPrompt;
+  const prompt = extra.length > 0 ? `${diagnosis.fixPrompt}\n\nAlso observed:\n${extra.join("\n")}` : diagnosis.fixPrompt;
+  const fixPrompt = withFixContext(prompt, {
+    skillFile: loaded.skillFile,
+    languagesFile: languagesFile(loaded.homedir),
+    languages: loaded.vocabulary.languages,
+  });
   const confidence = diagnosis.confidence === "high" && notes.length > 0 ? "partial" : diagnosis.confidence;
   return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
 }

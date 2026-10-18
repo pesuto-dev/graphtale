@@ -53,23 +53,25 @@ function ReadWarnings({ warnings }: { warnings: string[] }): ReactElement | null
 
 function copyLabel(copyState: CopyState): string {
   if (copyState === "copied") {
-    return "Copied. Paste in chat";
+    return "Copied. Paste in your AI chat";
   }
   if (copyState === "failed") {
     return "Copy failed. Select the prompt text";
   }
-  return "Copy clarification prompt";
+  return "Copy fix prompt";
 }
 
 function DiagnosisBanner({
   diagnosis,
   copyState,
   onOpenCatalog,
+  onOpenSkillFile,
   onCopy,
 }: {
   diagnosis: ProcedureDiagnosis;
   copyState: CopyState;
   onOpenCatalog: () => void;
+  onOpenSkillFile: () => void;
   onCopy: () => void;
 }): ReactElement {
   const showPrompt = copyState === "failed" && diagnosis.fixPrompt.length > 0;
@@ -89,15 +91,18 @@ function DiagnosisBanner({
         ) : null}
       </div>
       <div className="diagnosis-actions">
+        <button type="button" className="fix-prompt-btn" onClick={onCopy}>
+          {copyLabel(copyState)}
+        </button>
+        <p className="diagnosis-actions-hint">
+          Paste it in your AI chat. It proposes a change for you to approve, and Flow updates when the file is saved.
+        </p>
+        <button type="button" onClick={onOpenSkillFile}>
+          Open SKILL.md
+        </button>
         <button type="button" onClick={onOpenCatalog}>
           Inspect files in Catalog
         </button>
-        <details>
-          <summary>Optional: clarify the step structure</summary>
-          <button type="button" className="fix-prompt-btn" onClick={onCopy}>
-            {copyLabel(copyState)}
-          </button>
-        </details>
       </div>
     </div>
   );
@@ -219,6 +224,9 @@ export function FlowPane({
             copyState={state.copyState}
             onOpenCatalog={() => {
               state.switchView("catalog");
+            }}
+            onOpenSkillFile={() => {
+              vscode.postMessage({ type: "openSkillFile" });
             }}
             onCopy={state.copyFixPrompt}
           />

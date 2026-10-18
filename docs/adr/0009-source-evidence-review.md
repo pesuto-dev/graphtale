@@ -1,6 +1,7 @@
 # Visual review follows source evidence
 
-Status: accepted for public preview, 2026-09-06.
+Status: accepted for public preview, 2026-09-06. The banner priority of the
+clarification prompt is superseded by ADR 0010.
 
 Graphtale reviews supported instruction structure and file inventory. Earlier
 ADRs using “runtime” describe intended order, never observed execution. A parser

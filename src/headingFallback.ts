@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import { FLOW_MAX_STEPS } from "./fileAccess";
 import { skillDocumentNode, procedureSourceNode } from "./flowNodes";
-import { EXCLUDED, HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
 import { firstLine } from "./text";
@@ -44,6 +45,7 @@ interface HeadingArgs {
   skillText: string;
   candidates: { path: string; text: string }[];
   warnings: string[];
+  vocabulary?: Vocabulary;
 }
 
 interface BuiltHeadingGraph {
@@ -55,8 +57,8 @@ interface BuiltHeadingGraph {
 }
 
 /** Level-2 and level-3 headings, in source order, outside excluded sections and fences. */
-export function detectUnorderedHeadings(text: string): HeadingHit[] {
-  const visible = visibleLines(text);
+export function detectUnorderedHeadings(text: string, vocabulary: Vocabulary): HeadingHit[] {
+  const visible = visibleLines(text, false, vocabulary);
   const original = text.split(/\r?\n/);
   const parents: HeadingParent[] = [];
   const hits: HeadingHit[] = [];
@@ -66,7 +68,7 @@ export function detectUnorderedHeadings(text: string): HeadingHit[] {
     const level = heading[1].length;
     popParentsAtOrAbove(parents, level);
     const title = heading[2].replace(/\*\*/g, "").trim();
-    const excluded = EXCLUDED.test(heading[2]) || parents.some((parent) => parent.excluded);
+    const excluded = vocabulary.isSkipSection(heading[2]) || parents.some((parent) => parent.excluded);
     parents.push({ level, excluded });
     if (excluded || !title || (level !== 2 && level !== 3)) continue;
     let end = i + 1;
@@ -79,7 +81,7 @@ export function detectUnorderedHeadings(text: string): HeadingHit[] {
 /** First candidate with ##/### headings, after numbered lists and P/N rows have failed. */
 export function procedureFromHeadings(args: HeadingArgs): ProcedureResult | undefined {
   for (const candidate of args.candidates) {
-    const hits = detectUnorderedHeadings(candidate.text);
+    const hits = detectUnorderedHeadings(candidate.text, args.vocabulary ?? ENGLISH);
     if (!hits.length) continue;
     const warnings = [...args.warnings];
     const kept = hits.slice(0, FLOW_MAX_STEPS);

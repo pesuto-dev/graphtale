@@ -25,4 +25,10 @@ describe("isWatchedChange", () => {
       isWatchedChange("/home/user/.claude/references/other.md", "/repo/analyse-ticket", extras),
     ).toBe(false);
   });
+
+  it("matches Windows paths regardless of drive-letter case and separators", () => {
+    expect(isWatchedChange("c:\\Users\\me\\.claude\\skills\\pa\\SKILL.md", "C:\\Users\\me\\.claude\\skills\\pa", [])).toBe(true);
+    expect(isWatchedChange("c:\\Users\\me\\.graphtale\\languages.json", "D:\\skills\\pa", ["C:\\Users\\me\\.graphtale\\languages.json"])).toBe(true);
+    expect(isWatchedChange("/Repo/pa/SKILL.md", "/repo/pa", [])).toBe(false);
+  });
 });

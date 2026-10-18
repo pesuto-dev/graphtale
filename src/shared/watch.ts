@@ -5,14 +5,20 @@ export function isWatchedChange(
   skillRoot: string | undefined,
   extraFiles: string[],
 ): boolean {
-  const file = normalizePath(filePath);
+  const file = watchKey(filePath);
   if (skillRoot) {
-    const root = normalizePath(skillRoot);
+    const root = watchKey(skillRoot);
     if (file === root || file.startsWith(`${root}/`)) {
       return true;
     }
   }
-  return extraFiles.some((item) => normalizePath(item) === file);
+  return extraFiles.some((item) => watchKey(item) === file);
+}
+
+/** Windows paths compare case-insensitively: VS Code reports `c:\`, os.homedir() returns `C:\`. */
+function watchKey(value: string): string {
+  const normalized = normalizePath(value);
+  return /^[a-z]:\//i.test(normalized) ? normalized.toLowerCase() : normalized;
 }
 
 export function extraWatchFiles(nodePaths: string[]): string[] {
