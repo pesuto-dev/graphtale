@@ -2,7 +2,7 @@
   "name": "graphtale",
   "displayName": "Graphtale – Agent Skill Flow Viewer (SKILL.md)",
   "description": "See your SKILL.md as a step-by-step flow linked to source lines. Local, read-only, no LLM. Works with Cursor, Claude Code and Codex skills.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "pesuto",
   "author": {
     "name": "pesuto",

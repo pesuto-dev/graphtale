@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-18
+
 ### Added
 
 - **Catalog** search filters the inventory by file name, path, and description. An empty state appears when nothing matches.
@@ -66,6 +68,7 @@ version; it was not released to npm, the Visual Studio Marketplace, or Open VSX.
 - Open a skill from the Command Palette, the Graphtale sidebar, or a `SKILL.md` editor or explorer action. **Refresh** reloads the open skill. **Open instruction**, **Open referenced resource**, and **Open file** return to the source.
 - Discovery of workspace and user skill roots used by Cursor, Claude Code, Codex, and `.agents/skills`, including skills recorded in Claude’s installed-plugins file.
 
-[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/pesuto-dev/graphtale/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/pesuto-dev/graphtale/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/pesuto-dev/graphtale/releases/tag/v0.1.0
