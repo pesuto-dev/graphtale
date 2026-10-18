@@ -17,6 +17,7 @@
 !docs/install.md
 !docs/parser-coverage.md
 !docs/skill-locations.md
+!docs/skill-standard.md
 
 # README demo. Not a VSIX asset, even if a broader docs rule is added later.
 docs/media/**
