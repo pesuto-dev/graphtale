@@ -1,11 +1,7 @@
-import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { HEADING, visibleLines } from "./procedureLines";
+import { conditionalWord, scanGroups, type DetectedStep, type StepGroup } from "./procedureScan";
 import type { Vocabulary } from "./procedureVocabulary";
 
-/** Wording that makes a step conditional, so Flow draws no edge into or out of it. */
-export const CONDITIONAL = /\b(if|otherwise|unless|parallel|concurrently|alternatively|choose one|one of|go to|skip|repeat|until)\b/i;
-
-const ITEM = /^(\d+[a-z]?)\.\s+(.*\S)\s*$/i;
-const STEP_HEADING = /^(?:(?:step|phase|stage|gate)\s+)?(\d+[a-z]?)(?:\.|\s*[:—–-])\s+(.*\S)\s*$/i;
 const CHOICE = /\?|→|->/;
 
 export interface ListItem {
@@ -16,90 +12,63 @@ export interface ListItem {
   conditionLine?: number;
 }
 
-/** A numbered list, or a run of numbered sub-headings, outside skip sections. */
+/** A group of steps for the repair plan: one Flow reads, or one it would read after a heading change. */
 export interface NumberedList {
   heading: string;
   /** The heading text exactly as written, for a rename the model can find on that line. */
   raw: string;
+  /** Line of the heading the list sits under, or of its first item at the top of the file. */
   line: number;
+  /** Level of that heading; 0 at the top of the file. */
   level: number;
   recognized: boolean;
   fromHeadings: boolean;
+  /** Numbered as "Step 1:" headings, which Flow does not read. */
+  stepLike: boolean;
+  /** Flow already reads these steps. */
+  read: boolean;
   /** Most items are questions or arrows: a choice between lanes, not steps in a row. */
   decision: boolean;
   items: ListItem[];
 }
 
-interface Scan {
-  vocabulary: Vocabulary;
-  parents: { level: number; excluded: boolean }[];
-  titles: string[];
-  lists: NumberedList[];
-  current?: NumberedList;
-  item?: ListItem;
-}
-
-/** Every numbered list with at least two items, with the first line that makes each item conditional. */
+/**
+ * The step groups Flow reads, plus the groups it would read if every heading were a step section
+ * and "Step 1:" headings were numbered. Built from Flow's own scan, so the plan and Flow agree.
+ */
 export function numberedLists(text: string, vocabulary: Vocabulary): NumberedList[] {
-  const scan: Scan = { vocabulary, parents: [], titles: [], lists: [] };
-  visibleLines(text, false, vocabulary).forEach((line, index) => {
-    const heading = HEADING.exec(line);
-    if (heading) takeHeading(scan, heading, index + 1);
-    else takeLine(scan, line, index + 1);
-  });
-  for (const list of scan.lists) list.decision = isDecision(list);
-  return scan.lists.filter((list) => list.items.length >= 2);
+  const read = scanGroups(text, "", vocabulary);
+  const readLines = new Set(read.flatMap((group) => group.steps.map((step) => step.source.startLine)));
+  const unread = scanGroups(text, "", vocabulary, { everySection: true, stepHeadings: true })
+    .filter((group) => group.steps.length >= 2 && !group.steps.some((step) => readLines.has(step.source.startLine)));
+  return [...read.map((group) => toList(group, vocabulary, true)), ...unread.map((group) => toList(group, vocabulary, false))]
+    .sort((a, b) => (a.items[0]?.line ?? 0) - (b.items[0]?.line ?? 0));
 }
 
-function takeHeading(scan: Scan, heading: RegExpExecArray, line: number): void {
-  const level = heading[1].length;
-  const title = cleanText(heading[2]);
-  if (scan.current?.fromHeadings && level > scan.current.level + 1) return;
-  popParentsAtOrAbove(scan.parents, level);
-  // A skip word in the # title hides the whole file from Flow; skipTitle() reports that case.
-  const excluded = (level >= 2 && scan.vocabulary.isSkipSection(heading[2])) || scan.parents.some((parent) => parent.excluded);
-  scan.parents.push({ level, excluded });
-  scan.titles[level] = title;
-  scan.titles.length = level + 1;
-  scan.item = undefined;
-  const numbered = level >= 2 && !excluded ? STEP_HEADING.exec(heading[2]) : null;
-  if (numbered) {
-    takeNumberedHeading(scan, numbered, level, line);
-    return;
-  }
-  scan.current = excluded ? undefined : openList(scan, { heading: title, raw: heading[2].trim(), line, level, recognized: scan.vocabulary.isStepSection(heading[2]), fromHeadings: false });
+function toList(group: StepGroup, vocabulary: Vocabulary, read: boolean): NumberedList {
+  const items = group.steps.map(toItem);
+  const section = group.section;
+  const first = group.steps.at(0)?.source.startLine ?? 0;
+  return {
+    heading: section ? cleanText(section.title) : "the top of the file",
+    raw: section ? section.title.trim() : "",
+    line: section ? section.line : first,
+    level: section ? section.level : 0,
+    recognized: section ? vocabulary.isStepSection(section.title) : true,
+    fromHeadings: group.kind === "numbered headings",
+    stepLike: group.stepLike === true,
+    read,
+    decision: items.filter((entry) => CHOICE.test(entry.title + (entry.condition ?? ""))).length >= items.length / 2,
+    items,
+  };
 }
 
-function takeNumberedHeading(scan: Scan, numbered: RegExpExecArray, level: number, line: number): void {
-  if (!scan.current?.fromHeadings || scan.current.level !== level - 1) {
-    const parent = scan.titles.slice(0, level).filter(Boolean).at(-1) ?? `numbered headings from line ${String(line)}`;
-    scan.current = openList(scan, { heading: parent, raw: parent, line, level: level - 1, recognized: false, fromHeadings: true });
-  }
-  scan.item = { number: numbered[1], title: shortTitle(numbered[2]), line };
-  scan.current.items.push(scan.item);
-}
-
-function openList(scan: Scan, list: Omit<NumberedList, "items" | "decision">): NumberedList {
-  const opened: NumberedList = { ...list, decision: false, items: [] };
-  scan.lists.push(opened);
-  return opened;
-}
-
-function takeLine(scan: Scan, line: string, lineNumber: number): void {
-  const match = ITEM.exec(line);
-  if (scan.current && match && !scan.current.fromHeadings) {
-    scan.item = { number: match[1], title: shortTitle(match[2]), line: lineNumber };
-    scan.current.items.push(scan.item);
-  }
-  if (scan.item && !scan.item.condition && CONDITIONAL.test(line)) {
-    scan.item.condition = cleanText(line).slice(0, 120);
-    scan.item.conditionLine = lineNumber;
-  }
-}
-
-function isDecision(list: NumberedList): boolean {
-  const choices = list.items.filter((entry) => CHOICE.test(entry.title + (entry.condition ?? "")));
-  return choices.length >= list.items.length / 2;
+function toItem(step: DetectedStep): ListItem {
+  const item: ListItem = { number: step.display, title: shortTitle(step.title), line: step.source.startLine };
+  const found = conditionalWord(step);
+  if (!found) return item;
+  const text = step.body.split(/\r?\n/).at(found.line - step.source.startLine) ?? "";
+  return { ...item, condition: cleanText(text).slice(0, 120), conditionLine: found.line };
 }
 
 export function cleanText(text: string): string {
@@ -108,7 +77,7 @@ export function cleanText(text: string): string {
 
 /** The step name before its first sentence break or arrow, at most six words; P/N rows cannot hold arrows. */
 function shortTitle(text: string): string {
-  const named = cleanText(text).replace(/^(?:step|phase)\s+\d+\S*\s*/i, "").split(/\s*(?:->|→)\s*/)[0] ?? "";
+  const named = cleanText(text).split(/\s*(?:->|→)\s*/)[0] ?? "";
   const first = named.split(/(?<=[a-z0-9)])[.:;]\s| — | – /i)[0] ?? "";
   const words = first.split(" ");
   return (words.length > 6 ? `${words.slice(0, 6).join(" ")}…` : first).replace(/\.$/, "");

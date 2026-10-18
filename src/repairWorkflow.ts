@@ -7,6 +7,9 @@ export const WORKFLOW_LINK = "Step order: [references/workflow.md](references/wo
 
 const SCRIPT_FILE = /\.(?:sh|bash|ps1|py|mjs|cjs|js|ts)$/i;
 const MAX_SCRIPTS = 8;
+// Keeps the fix prompt well under the copy limit for large skills.
+const MAX_ROWS = 60;
+const MAX_CONDITIONS = 12;
 
 /** One numbered instruction of a plan, with optional indented details. */
 export interface PlanStep { text: string; sub?: string[] }
@@ -65,7 +68,10 @@ function branchSteps(rows: Row[], conditional: Row[], lists: NumberedList[]): Pl
   if (conditional.length > 0) {
     steps.push({
       text: "These steps have conditional wording. When the condition decides whether the step runs, write it on the arrow into the step as `<from id> -> <to id> (<condition>)`, and add an arrow around the step (from the step before it to the step after it) with the opposite condition. A condition inside a step, such as a fallback path, gets no label and no extra arrow. If the first row is conditional, add the condition to its title.",
-      sub: conditional.map((row) => `- ${row.id} (step at line ${String(row.item.line)}, condition at line ${String(row.item.conditionLine ?? row.item.line)}): "${row.item.condition ?? ""}"`),
+      sub: [
+        ...conditional.slice(0, MAX_CONDITIONS).map((row) => `- ${row.id} (step at line ${String(row.item.line)}, condition at line ${String(row.item.conditionLine ?? row.item.line)}): "${row.item.condition ?? ""}"`),
+        ...(conditional.length > MAX_CONDITIONS ? [`- and ${String(conditional.length - MAX_CONDITIONS)} more: ${conditional.slice(MAX_CONDITIONS).map((row) => row.id).join(", ")}. Read their text in the skill the same way.`] : []),
+      ],
     });
   }
   const special = [...alternatives(rows), ...decisions(rows)];
@@ -118,8 +124,9 @@ function chains(row: Row, next: Row): boolean {
 
 /** The heading carries no skill name: a name such as release-notes would hit a skip word and hide the file. */
 function skeleton(args: WorkflowArgs, rows: Row[]): string[] {
-  const arrows = rows.flatMap((row, index) => {
-    const next = rows.at(index + 1);
+  const shown = rows.slice(0, MAX_ROWS);
+  const arrows = shown.flatMap((row, index) => {
+    const next = shown.at(index + 1);
     return next && chains(row, next) ? [`${row.id} -> ${next.id}`] : [];
   });
   const intro = args.target.exists ? [] : [
@@ -128,12 +135,14 @@ function skeleton(args: WorkflowArgs, rows: Row[]): string[] {
     `Step order of [SKILL.md](../SKILL.md) for ${args.skillName}. The rules stay in SKILL.md; this file only states the order.`,
     "",
   ];
+  const rest = rows.slice(MAX_ROWS);
   return [
     `Skeleton for ${args.target.file}:`,
+    ...(rest.length > 0 ? [`(Shows the first ${String(MAX_ROWS)} of ${String(rows.length)} rows. Add ${rest[0]?.id ?? ""} to ${rest.at(-1)?.id ?? ""} the same way, from line ${String(rest[0]?.item.line ?? 0)} on.)`] : []),
     "",
     ...intro,
     "```",
-    ...rows.map((row) => `${row.id.padEnd(4)}${row.item.title.padEnd(32)}  this loop`),
+    ...shown.map((row) => `${row.id.padEnd(4)}${row.item.title.padEnd(32)}  this loop`),
     "```",
     "",
     "## Connections",

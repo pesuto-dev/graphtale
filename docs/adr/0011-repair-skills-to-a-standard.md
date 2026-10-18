@@ -24,9 +24,16 @@ skill itself towards it, so an agent running the skill and Flow read the same or
   prompt says to change nothing when the user confirms there is no order.
 - Ownership comes first: plugin copies and skills installed by the skills CLI are repaired at their
   source, a linked skill at its real path, and another copy with the same name is named.
+- The model that runs the prompt makes the backup itself, before any edit: it copies the skill folder to
+  `~/.graphtale/backups/<skill>/<date-time>/`, checks the copy, and reports the restore command. The
+  user does not have to arrange it. Git is not relied on: most skill folders are not in a repository, and
+  the model must not commit or stash on the user's behalf. The backup stays outside every skills folder,
+  because a copied SKILL.md would load as a second skill.
 - Every plan that edits a file ends with a verifier: record file hashes, allow only the planned changes,
   check the P/N format and ids, and trace every row and label to a source line. A second agent may run
   the checks independently.
+- The plan reads steps through Flow's own scan, once as Flow reads them and once as Flow would read them
+  if every heading were a step section, so the plan and the banner cannot disagree about a skill.
 
 Graphtale itself still never writes skill files (ADR 0002, 0003). Flow output is unchanged; only the
 diagnosis text and the fix prompt change.

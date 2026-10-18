@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { numberedLists, skipTitle, titleLine, type NumberedList } from "./procedureLists";
 import type { Vocabulary } from "./procedureVocabulary";
+import { backupSteps } from "./repairBackup";
 import { ownershipFacts } from "./repairOwnership";
 import { DONE_BANNER, WORKFLOW_LINK, renderSteps, workflowSteps, type PlanStep } from "./repairWorkflow";
 import type { CatalogSkill } from "./shared/protocol";
@@ -21,7 +22,12 @@ export interface RepairOrigin {
   explicit: boolean;
   /** The diagnosis names what is wrong (P/N findings). */
   named: boolean;
+  /** Step lists of the source file when the caller already scanned it. */
+  lists?: NumberedList[];
 }
+
+/** The plan, and a shorter one without the skeleton for prompts that would pass the copy limit. */
+export interface RepairPlanText { full: string; compact: string }
 
 export interface RepairInput {
   skillName: string;
@@ -49,24 +55,27 @@ interface Recipe { steps: PlanStep[]; after?: string[]; change: Change }
  * One concrete repair for this skill, so any model can follow it without exploring.
  * docs/skill-standard.md is the structure it repairs towards.
  */
-export function repairPlan(input: RepairInput): string {
+export function repairPlan(input: RepairInput): RepairPlanText {
   const facts = ownershipFacts(input);
   const recipe = chooseRecipe(input);
   const check = verifier(input, recipe.change);
-  return [
+  const body = [
     ...facts, ...(facts.length > 0 ? [""] : []),
+    ...backupSteps(input), "",
     "Repair (do exactly this):",
     ...renderSteps(recipe.steps),
     ...(check.length > 0 ? ["", ...check] : []),
-    ...(recipe.after ? ["", ...recipe.after] : []),
-  ].join("\n");
+  ];
+  const skeleton = recipe.after ?? [];
+  const compact = skeleton.length > 0 ? [...body, "", "The skeleton is left out because this skill is large. Write one row per step from the lists named above, in the format the checks describe."] : body;
+  return { full: [...body, ...(skeleton.length > 0 ? ["", ...skeleton] : [])].join("\n"), compact: compact.join("\n") };
 }
 
 function chooseRecipe(input: RepairInput): Recipe {
   const { origin } = input;
   if (origin.explicit) return warningRecipe();
   if (origin.shape === "pn") return pnRecipe(relative(input, origin.sourcePath), origin.named);
-  const hidden = hidingTitle(input);
+  const hidden = origin.shape === "steps" || origin.shape === "router" ? undefined : hidingTitle(input);
   if (hidden) return titleRecipe(hidden);
   const { lists, file } = listsFor(input);
   if (origin.shape === "router") return routerRecipe(lists, file);
@@ -122,8 +131,9 @@ function askRecipe(shape: string, ifYes = "If yes: ask the user for the order, t
 
 function routerRecipe(lists: NumberedList[], file: string): Recipe {
   const shape = "The skill routes to separate files. That is a valid shape: each route is its own branch.";
-  if (lists.length === 0) return askRecipe(shape);
-  const named = lists.map((list) => `"${list.raw}" (${file} line ${String(list.line)})`).join(", ");
+  const plain = lists.filter((list) => !list.fromHeadings && !list.stepLike && list.level > 0);
+  if (plain.length === 0) return askRecipe(shape);
+  const named = plain.map((list) => `"${list.raw}" (${file} line ${String(list.line)})`).join(", ");
   return askRecipe(shape, `If yes: ask whether one of these numbered lists is that order: ${named}. If it is, change only its heading so it starts with "Workflow: ". Otherwise ask the user for the order. Do not guess it.`);
 }
 
@@ -155,6 +165,7 @@ function workflowRecipe(input: RepairInput, lists: NumberedList[], listFile: str
 /** Lists from the file Flow read, falling back to SKILL.md when that file has none. */
 function listsFor(input: RepairInput): { lists: NumberedList[]; file: string } {
   const { origin } = input;
+  if (origin.lists && origin.lists.length > 0) return { lists: origin.lists, file: relative(input, origin.sourcePath) };
   const fromSource = origin.sourcePath === input.skillFile ? [] : numberedLists(origin.sourceText, input.vocabulary);
   if (fromSource.length > 0) return { lists: fromSource, file: relative(input, origin.sourcePath) };
   return { lists: numberedLists(input.skillText, input.vocabulary), file: "SKILL.md" };
@@ -163,7 +174,7 @@ function listsFor(input: RepairInput): { lists: NumberedList[]; file: string } {
 /** One plain list under an unrecognized heading only needs that heading renamed. */
 function renameCandidate(lists: NumberedList[]): NumberedList | undefined {
   const single = lists.length === 1 ? lists[0] : undefined;
-  if (!single || single.recognized || single.fromHeadings) return undefined;
+  if (!single || single.read || single.recognized || single.fromHeadings || single.stepLike || single.level === 0) return undefined;
   return single.items.some((item) => item.condition) ? undefined : single;
 }
 

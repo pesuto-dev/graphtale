@@ -164,6 +164,10 @@ such as Notes, Reference or Examples when they would otherwise be read as steps.
 - Repair at the source. A plugin install under `~/.claude/plugins/cache/` and a skill installed by the
   skills CLI under `~/.agents/skills/` are copies that an update overwrites. Repair the plugin's source
   repository or the upstream skill, then update. A linked skill is repaired at its real path.
+- Back up first. Whoever repairs the skill copies the whole skill folder to
+  `~/.graphtale/backups/<skill>/<date-time>/` before changing anything, checks the copy against the
+  originals, and names the backup and its restore command afterwards. Never put a backup inside a skills
+  folder or next to SKILL.md: a copied SKILL.md loads as a second skill with the same name.
 - Check the result: record the hash of every file in the skill folder first, then confirm that only the
   allowed changes appear in the diff. Graphtale's fix prompt lists these checks for each repair.
 

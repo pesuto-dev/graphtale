@@ -123,8 +123,10 @@ before the general options, one repair chosen from the skill's structure: rename
 heading, write a prefilled `references/workflow.md` skeleton with the link line that
 makes agents read it, or ask whether the skill has an order at all (prose, mode and
 router skills). It names who owns the file (plugin copy, skills CLI install, link,
-another copy with the same name) and ends edits with a verifier: file hashes, only
-the planned changes, P/N format and ids, and a source line for every row and label.
+another copy with the same name), has the AI tool back up the skill folder to
+`~/.graphtale/backups/` before any edit, and ends edits with a verifier: file
+hashes, only the planned changes, P/N format and ids, and a source line for every
+row and label. The plan reads steps through the same scan as Flow.
 The target structure is the [skill structure standard](skill-standard.md); see
 [ADR 0011](adr/0011-repair-skills-to-a-standard.md).
 

@@ -10,7 +10,7 @@ import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
 import { procedureFromRouter } from "./procedureRouter";
-import { repairPlan, type RepairOrigin } from "./repairPlan";
+import { repairPlan, type RepairOrigin, type RepairPlanText } from "./repairPlan";
 import { languagesFile, loadVocabulary, type Vocabulary } from "./procedureVocabulary";
 import { frontmatterNeverCloses, stripBom } from "./text";
 
@@ -138,7 +138,7 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
     warnings: loaded.warnings,
     vocabulary: loaded.vocabulary,
   });
-  if (headings) return finish(loaded, headings.graph, headings.diagnosis, unordered("headings", headings.sourcePath, textOf(loaded, headings.sourcePath)));
+  if (headings) return finish(loaded, headings.graph, headings.diagnosis, { ...unordered("headings", headings.sourcePath, headings.sourceText), lists: headings.lists });
   if (!loaded.linked) {
     const graph: SkillGraph = {
       skillId: `${loaded.skillName}-procedure`,
@@ -165,10 +165,6 @@ function unordered(shape: RepairOrigin["shape"], sourcePath: string, sourceText:
   return { shape, sourcePath, sourceText, explicit: false, named: false };
 }
 
-function textOf(loaded: ProcedureLoad, file: string): string {
-  return loaded.candidates.find((candidate) => candidate.path === file)?.text ?? loaded.skillText;
-}
-
 /** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
 function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDiagnosis, origin: RepairOrigin): ProcedureResult {
   const notes = [...new Set([...(graph.warnings ?? []), ...loaded.warnings])];
@@ -185,7 +181,7 @@ function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDi
   return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
 }
 
-function planFor(loaded: ProcedureLoad, origin: RepairOrigin): string {
+function planFor(loaded: ProcedureLoad, origin: RepairOrigin): RepairPlanText {
   return repairPlan({
     skillName: loaded.skillName,
     skillRoot: loaded.skillRoot,

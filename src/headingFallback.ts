@@ -6,7 +6,7 @@ import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
-import { firstLine } from "./text";
+import { firstLine, nameFirst } from "./text";
 
 /** Diagnosis phrase for prose headings that do not state an execution order. */
 export const HEADING_HEURISTIC = "heuristic: headings, no order";
@@ -80,7 +80,11 @@ export function detectUnorderedHeadings(text: string, vocabulary: Vocabulary): H
 }
 
 /** First candidate with ##/### headings, after numbered lists and P/N rows have failed. */
-export function procedureFromHeadings(args: HeadingArgs): (ProcedureResult & { sourcePath: string }) | undefined {
+/** The heading result plus the file it came from and its step lists, so the repair plan need not scan again. */
+export type HeadingResult = ProcedureResult & { sourcePath: string; sourceText: string; lists: NumberedList[] };
+
+/** First candidate with ##/### headings, after numbered lists and P/N rows have failed. */
+export function procedureFromHeadings(args: HeadingArgs): HeadingResult | undefined {
   for (const candidate of args.candidates) {
     const hits = detectUnorderedHeadings(candidate.text, args.vocabulary ?? ENGLISH);
     if (!hits.length) continue;
@@ -88,10 +92,13 @@ export function procedureFromHeadings(args: HeadingArgs): (ProcedureResult & { s
     const kept = hits.slice(0, FLOW_MAX_STEPS);
     if (kept.length < hits.length) warnings.push(`Flow shows ${String(FLOW_MAX_STEPS)} of ${String(hits.length)} steps.`);
     const fileName = path.basename(candidate.path);
+    const lists = numberedLists(candidate.text, args.vocabulary ?? ENGLISH);
     return {
       sourcePath: candidate.path,
+      sourceText: candidate.text,
+      lists,
       graph: buildGraph({ skill: args, sourcePath: candidate.path, sourceText: candidate.text, hits: kept, warnings }),
-      diagnosis: diagnosisFor(args.skillName, fileName, kept.length, numberedLists(candidate.text, args.vocabulary ?? ENGLISH)),
+      diagnosis: diagnosisFor(args.skillName, fileName, kept.length, lists),
     };
   }
   return undefined;
@@ -99,15 +106,23 @@ export function procedureFromHeadings(args: HeadingArgs): (ProcedureResult & { s
 
 const MAX_NAMED_LISTS = 4;
 
-/** Numbered lists Flow skipped because their heading is not a step section. */
+/** Steps Flow skipped: lists under headings that are not step sections, and "Step 1:" headings. */
 function unreadDetail(fileName: string, lists: NumberedList[]): string {
-  const named = lists.slice(0, MAX_NAMED_LISTS)
-    .map((list) => `"${list.heading}" (line ${String(list.line)}, ${String(list.items.length)} items)`).join(", ");
-  const more = lists.length > MAX_NAMED_LISTS ? ` and ${String(lists.length - MAX_NAMED_LISTS)} more` : "";
-  const conditional = lists.some((list) => list.items.some((item) => item.condition))
-    ? " These lists also contain conditional wording, so renaming alone leaves steps without edges; state the order in references/workflow.md."
-    : "";
-  return `${fileName} has numbered lists under headings Flow does not read as steps: ${named}${more}. A step heading must start with a recognized name, for example "Workflow: …".${conditional}`;
+  const plain = lists.filter((list) => !list.stepLike);
+  const stepLike = lists.filter((list) => list.stepLike);
+  const parts: string[] = [];
+  if (plain.length > 0) {
+    const named = plain.map((list) => `"${list.heading}" (line ${String(list.line)}, ${String(list.items.length)} items)`);
+    parts.push(`${fileName} has numbered lists under headings Flow does not read as steps: ${nameFirst(named, MAX_NAMED_LISTS)}. A step heading must start with a recognized name, for example "Workflow: …".`);
+  }
+  if (stepLike.length > 0) {
+    const named = stepLike.map((list) => `under "${list.heading}" (from line ${String(list.items[0]?.line ?? list.line)}, ${String(list.items.length)} steps)`);
+    parts.push(`${fileName} numbers headings as "Step 1:" or "Phase 1:" ${nameFirst(named, MAX_NAMED_LISTS)}; Flow reads numbered headings only in the form "1. Title".`);
+  }
+  if (lists.some((list) => list.items.some((item) => item.condition))) {
+    parts.push("These steps also contain conditional wording, so renaming alone leaves steps without edges; state the order in references/workflow.md.");
+  }
+  return parts.join(" ");
 }
 
 function diagnosisFor(skillName: string, fileName: string, count: number, lists: NumberedList[]): ProcedureDiagnosis {

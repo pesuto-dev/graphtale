@@ -190,7 +190,7 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
     case "openFile": return identifier(value.nodeId) && optional(value.target, x => oneOf(x, ["instruction", "resource", "wrapper"]));
     case "openSkill": return identifier(value.rootPath);
     case "setDirection": return direction(value.direction);
-    case "copyText": return text(value.text) && value.text.length <= 65_536;
+    case "copyText": return text(value.text) && value.text.length <= COPY_TEXT_LIMIT;
     default: return false;
   }
 }
@@ -246,6 +246,9 @@ export const STEP_SECTION_HEADINGS = [
 
 /** English section headings Flow skips. */
 export const SKIP_SECTION_HEADINGS = ["Examples", "Alternatives", "Options", "Appendix", "Notes", "Reference", "Choices"] as const;
+
+/** Longest text the webview may ask the host to copy. */
+export const COPY_TEXT_LIMIT = 65_536;
 
 const LANGUAGES_PATH = "~/.graphtale/languages.json";
 const FIX_INTRO_END = "Do not change what the skill does. Do not invent new work. Show the proposed change as a diff and wait for the user's approval before saving.";
@@ -322,7 +325,7 @@ export interface FixContext {
   languagesFile: string;
   languages: string[];
   /** Concrete repair Graphtale derived from this skill; it leads, and the options become background. */
-  plan?: string;
+  plan?: { full: string; compact: string };
 }
 
 /** Insert where-to-edit facts after the prompt's intro, so they are read before the options. */
@@ -341,7 +344,9 @@ export function withFixContext(prompt: string, context: FixContext): string {
   const marker = `${FIX_INTRO_END}\n`;
   const block = `${marker}\n${lines.join("\n")}\n`;
   const withFacts = prompt.includes(marker) ? prompt.replace(marker, () => block) : `${prompt}\n\n${lines.join("\n")}`;
-  return context.plan ? withPlan(withFacts, context.plan) : withFacts;
+  if (!context.plan) return withFacts;
+  const full = withPlan(withFacts, context.plan.full);
+  return full.length <= COPY_TEXT_LIMIT ? full : withPlan(withFacts, context.plan.compact);
 }
 
 /** The plan goes after Observed; the open choice below it becomes background. */

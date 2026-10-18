@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { readJsonFile } from "./fileAccess";
 import type { CatalogSkill } from "./shared/protocol";
 
 export interface OwnershipInput {
@@ -31,8 +32,8 @@ function isLinked(skillFile: string, real: string): boolean {
 function upstreamFacts(input: OwnershipInput, real: string | undefined): string[] {
   const installed = realPath(path.join(input.homedir, ".agents", "skills"));
   if (!installed || !real?.startsWith(installed + path.sep)) return [];
-  const folder = path.basename(path.dirname(real));
-  const lock = lockEntry(input.homedir, input.skillName) ?? lockEntry(input.homedir, folder);
+  const skills = lockedSkills(input.homedir);
+  const lock = lockEntry(skills, input.skillName) ?? lockEntry(skills, path.basename(path.dirname(real)));
   if (!lock) return [`This skill is in ${installed}, where the skills CLI installs skills. An update may overwrite local edits. Ask the user where it comes from before editing.`];
   return [
     `This skill was installed from ${lock.source} by the skills CLI. A skills update overwrites local edits.`,
@@ -40,12 +41,16 @@ function upstreamFacts(input: OwnershipInput, real: string | undefined): string[
   ];
 }
 
-function lockEntry(homedir: string, name: string): LockEntry | undefined {
-  const parsed = readJson(path.join(homedir, ".agents", ".skill-lock.json"));
-  if (typeof parsed !== "object" || parsed === null || !("skills" in parsed)) return undefined;
+/** The skills CLI lock file's entries, read once per plan. */
+function lockedSkills(homedir: string): Record<string, unknown> {
+  const parsed = readJsonFile(path.join(homedir, ".agents", ".skill-lock.json"));
+  if (typeof parsed !== "object" || parsed === null || !("skills" in parsed)) return {};
   const skills = parsed.skills;
-  if (typeof skills !== "object" || skills === null) return undefined;
-  const entry: unknown = (skills as Record<string, unknown>)[name];
+  return typeof skills === "object" && skills !== null ? skills as Record<string, unknown> : {};
+}
+
+function lockEntry(skills: Record<string, unknown>, name: string): LockEntry | undefined {
+  const entry = skills[name];
   return isLockEntry(entry) ? entry : undefined;
 }
 
@@ -66,15 +71,6 @@ function otherCopies(input: OwnershipInput, real: string | undefined): string[] 
 function realPath(file: string): string | undefined {
   try {
     return fs.realpathSync(file);
-  } catch {
-    return undefined;
-  }
-}
-
-function readJson(file: string): unknown {
-  try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
-    return parsed;
   } catch {
     return undefined;
   }

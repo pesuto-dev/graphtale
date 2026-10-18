@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { parseProcedure } from "./parseProcedure";
 import { DONE_BANNER, WORKFLOW_LINK } from "./repairPlan";
+import { COPY_TEXT_LIMIT } from "./shared/protocol";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -177,4 +178,67 @@ it("names scripts the skill already has as runners", () => {
 it("adds no plan when Flow is already explicit", () => {
   const prompt = plan({ "SKILL.md": ["# Fine", "", "## Workflow", "", "1. Plan.", "2. Build."].join("\n") });
   expect(prompt).not.toContain("Repair (do exactly this):");
+});
+
+it("fixes the step Flow read instead of a skip word in the SKILL.md title", () => {
+  const prompt = plan({
+    "SKILL.md": ["# API Reference helper", "", WORKFLOW_LINK].join("\n"),
+    "references/workflow.md": ["## Workflow", "", "1. Read.", "2. If empty, stop.", "3. Write."].join("\n"),
+  });
+  expect(prompt).not.toContain("The # title on line");
+  expect(prompt).toContain("Add the skeleton below");
+});
+
+it("plans from a numbered list that comes before any heading", () => {
+  const prompt = plan({ "SKILL.md": ["---", "name: top", "description: Top list.", "---", "1. Read the file.", "2. If it is empty, stop.", "3. Write output."].join("\n") });
+  expect(prompt).not.toContain("has no numbered steps");
+  expect(prompt).toContain('"the top of the file" (SKILL.md line 5): P to N2');
+});
+
+it("names Step-numbered headings instead of asking to rename a recognized heading", () => {
+  const { diagnosis } = parse(skill({ "SKILL.md": ["# Steps", "", "## Workflow", "", "### Step 1: Read", "", "Read it.", "", "### Step 2: Write", "", "Write it."].join("\n") }));
+  expect(diagnosis.message).toContain('numbers headings as "Step 1:" or "Phase 1:" under "Workflow" (from line 5, 2 steps)');
+  expect(diagnosis.message).not.toContain("A step heading must start with a recognized name");
+});
+
+it("does not count a list introduced as an example", () => {
+  const { diagnosis } = parse(skill({ "SKILL.md": ["# Ex", "", "## Notes on use", "", "Text.", "", "## Usage tips", "", "For example:", "1. Read.", "2. Write."].join("\n") }));
+  expect(diagnosis.message).not.toContain("numbered lists under headings");
+});
+
+it("keeps every numbered heading, even one with a skip word", () => {
+  const text = ["# Pick", "", "## Process", "", "### 1. Read", "", "Read.", "", "### 2. Pick options", "", "Pick if needed.", "", "### 3. Write", "", "Write.", "", "### 4. Ship", "", "Ship."].join("\n");
+  const prompt = plan({ "SKILL.md": text });
+  expect(prompt).toContain('"Process" (SKILL.md line 3): P to N3');
+  expect(prompt).toContain("N1  Pick options ");
+});
+
+it("offers a router only plain lists to rename", () => {
+  const text = ["# Router", "", "| Verb | File |", "| --- | --- |", "| day | [day](recipes/day.md) |", "| week | [week](recipes/week.md) |", "", "## Release", "", "### Step 1: Tag", "", "Tag it.", "", "### Step 2: Publish", "", "Publish it."].join("\n");
+  const prompt = plan({ "SKILL.md": text, "recipes/day.md": "Day.", "recipes/week.md": "Week." });
+  expect(prompt).toContain("If yes: ask the user for the order, then follow docs/skill-standard.md");
+  expect(prompt).not.toContain('"Release" (SKILL.md');
+});
+
+it("keeps the fix prompt under the copy limit for a large skill", () => {
+  const sections = Array.from({ length: 30 }, (_value, s) => [`## Part ${String(s)} process`, "", ...Array.from({ length: 25 }, (_v, i) => `${String(i + 1)}. Do item ${String(i)} of part ${String(s)} if the earlier item has finished and the data is valid.`), ""].join("\n"));
+  const prompt = plan({ "SKILL.md": ["# Big", "", ...sections].join("\n") });
+  expect(prompt.length).toBeLessThanOrEqual(COPY_TEXT_LIMIT);
+  expect(prompt).toContain("Shows the first 60 of");
+});
+
+it("has the model back up the real skill folder outside every skills folder before editing", () => {
+  const root = skill({ "SKILL.md": lanes });
+  const prompt = parse(root).diagnosis.fixPrompt;
+  const target = path.join(root, ".graphtale", "backups", "lanes");
+  expect(prompt).toContain("Backup (make it yourself before you change any file; do not ask the user to do it):");
+  expect(prompt).toContain(`cp -R "${fs.realpathSync(root)}" "${target}/$(date +%Y%m%d-%H%M%S)"`);
+  expect(prompt).toContain("Copy-Item -Recurse");
+  expect(prompt).toContain("Never put the backup inside a skills folder or the skill itself.");
+  expect(prompt.indexOf("Backup (make it yourself")).toBeLessThan(prompt.indexOf("Repair (do exactly this):"));
+});
+
+it("gives the backup folder a name that is safe on every platform", () => {
+  const prompt = plan({ "SKILL.md": ["---", "name: My Skill (v2)!", "description: Spaces.", "---", "", "# Odd", "", "## Process", "", "1. Plan.", "2. Build if ready."].join("\n") });
+  expect(prompt).toContain(path.join(".graphtale", "backups", "my-skill-v2"));
 });

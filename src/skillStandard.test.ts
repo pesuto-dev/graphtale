@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { parseProcedure } from "./parseProcedure";
-import { CONDITIONAL } from "./procedureLists";
+import { CONDITIONAL } from "./procedureScan";
 import { WORKFLOW_LINK } from "./repairPlan";
 import { buildFixPrompt } from "./shared/protocol";
 
