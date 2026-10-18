@@ -26,6 +26,9 @@ observe execution. Parsing never writes skill files.
   lines, an arrow to a missing id with the arrow's source line, and a self-loop
   with its source line. A disconnected component stays partial and keeps the
   generic unresolved sentence when none of those findings apply.
+- Numbered steps name why they are partial: each conditional step with the word
+  and the line it is on (at most four, then a count), separate step lists with
+  their first lines, and a list introduced as a choice.
 - P/N diagram fences can state routes with visual markers: `parallel` and `barrier`
   create a fan-out and rejoin; a labeled `↓` or `┐` creates a labeled branch; `join`
   reconnects it. Ordinary rows form a sequence only inside such a marked diagram.
@@ -69,7 +72,10 @@ execution order. Examples, alternatives, choices, options, notes, reference,
 and appendix headings are skipped, including headings nested under them.
 Headings in frontmatter and code fences are ignored, as are `#` titles and
 headings deeper than level 3. A document with no `##` or `###` heading keeps
-the empty diagnosis.
+the empty diagnosis. When numbered lists sit under headings that are not step
+sections, the diagnosis names those headings with their lines and item counts
+instead of saying there is no numbered list, and says when those lists contain
+conditional wording.
 
 A numbered list or P/N graph still wins, including when it is found in a later
 candidate than a heading-only file. The Flow banner shows this rewrite so an
@@ -109,6 +115,20 @@ matches as a whole word anywhere in the title. Both are case-insensitive and
 handle accented letters. An unreadable or malformed file is ignored with a Flow
 warning, and English still applies. Graphtale only reads this file; the fix
 prompt asks the AI tool to create or extend it when the user chooses that option.
+
+## Fix prompt and repair plan
+
+A partial or missing Flow carries a fix prompt. It states how Flow reads order and,
+before the general options, one repair chosen from the skill's structure: rename one
+heading, write a prefilled `references/workflow.md` skeleton with the link line that
+makes agents read it, or ask whether the skill has an order at all (prose, mode and
+router skills). It names who owns the file (plugin copy, skills CLI install, link,
+another copy with the same name), has the AI tool back up the skill folder to
+`~/.graphtale/backups/` before any edit, and ends edits with a verifier: file
+hashes, only the planned changes, P/N format and ids, and a source line for every
+row and label. The plan reads steps through the same scan as Flow.
+The target structure is the [skill structure standard](skill-standard.md); see
+[ADR 0011](adr/0011-repair-skills-to-a-standard.md).
 
 ## Source and relationship evidence
 

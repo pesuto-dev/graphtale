@@ -66,3 +66,9 @@ export function firstParagraph(text: string): string {
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/** The first `max` items joined, then "and N more" for the rest. */
+export function nameFirst(items: string[], max: number, separator = ", "): string {
+  const more = items.length > max ? ` and ${String(items.length - max)} more` : "";
+  return `${items.slice(0, max).join(separator)}${more}`;
+}

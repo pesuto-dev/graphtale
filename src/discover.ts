@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
+import { readJsonFile, readRequiredText, INVENTORY_MAX_FILES, INVENTORY_MAX_ENTRIES } from "./fileAccess";
 import { parseFrontmatter, type Frontmatter } from "./frontmatter";
 import type { CatalogSkill } from "./shared/protocol";
 
@@ -59,7 +59,7 @@ export function discoverSkills(options: DiscoverOptions): CatalogSkill[] {
 }
 
 function claudePluginSkillDirs(homedir: string): string[] {
-  const plugins = pluginIndex(readJson(path.join(homedir, ".claude", "plugins", "installed_plugins.json")));
+  const plugins = pluginIndex(readJsonFile(path.join(homedir, ".claude", "plugins", "installed_plugins.json")));
   if (!plugins) return [];
   return Object.values(plugins).flatMap(pluginSkillRoots);
 }
@@ -72,14 +72,6 @@ function pluginIndex(parsed: unknown): object | undefined {
 }
 
 /** A missing plugin index is normal; only a readable object contributes roots. */
-function readJson(file: string): unknown {
-  try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf8"));
-    return parsed;
-  } catch {
-    return undefined;
-  }
-}
 
 function pluginSkillRoots(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

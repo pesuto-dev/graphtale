@@ -161,3 +161,13 @@ function formatBytes(bytes: number): string {
 function uniqueWarnings(warnings: string[]): string[] {
   return [...new Set(warnings)];
 }
+
+/** Parsed JSON, or undefined when the file is missing or not valid JSON; callers decide what that means. */
+export function readJsonFile(filePath: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}

@@ -190,7 +190,7 @@ export function isWebviewToHost(value: unknown): value is WebviewToHost {
     case "openFile": return identifier(value.nodeId) && optional(value.target, x => oneOf(x, ["instruction", "resource", "wrapper"]));
     case "openSkill": return identifier(value.rootPath);
     case "setDirection": return direction(value.direction);
-    case "copyText": return text(value.text) && value.text.length <= 65_536;
+    case "copyText": return text(value.text) && value.text.length <= COPY_TEXT_LIMIT;
     default: return false;
   }
 }
@@ -247,42 +247,75 @@ export const STEP_SECTION_HEADINGS = [
 /** English section headings Flow skips. */
 export const SKIP_SECTION_HEADINGS = ["Examples", "Alternatives", "Options", "Appendix", "Notes", "Reference", "Choices"] as const;
 
+/** Longest text the webview may ask the host to copy. */
+export const COPY_TEXT_LIMIT = 65_536;
+
 const LANGUAGES_PATH = "~/.graphtale/languages.json";
 const FIX_INTRO_END = "Do not change what the skill does. Do not invent new work. Show the proposed change as a diff and wait for the user's approval before saving.";
 
+/** How Flow reads order; the repairing model cannot open Graphtale's source, so the prompt states it. */
+const READ_RULES = [
+  "How Graphtale reads order (the full standard is docs/skill-standard.md in the Graphtale repository):",
+  "- A step heading must start with a recognized name. \"Workflow: gate\" works; \"Gate workflow\" does not.",
+  "- A numbered step in SKILL.md whose text contains one of these whole words gets no edge in or out: if, otherwise, unless, parallel, concurrently, alternatively, choose one, one of, go to, skip, repeat, until. Do not reword it to get edges: that changes the skill. Put the condition on an arrow label in references/workflow.md instead.",
+  "- Separate numbered lists are not connected to each other. State how they connect in references/workflow.md.",
+  "- If the skill has no implied order (a reference, a mode, or a router whose routes are independent), say so and change nothing.",
+];
+
+const OPTIONS = [
+  "A) Repair the skill (default). Add ONE of these, using only steps already implied by the existing text:",
+  "   1) In SKILL.md, a numbered section under one of the headings above, for example:",
+  "      ## Workflow",
+  "      1. …",
+  "      2. …",
+  "   2) Or references/workflow.md with numbered headings or a P/N ASCII graph (rows plus a Connections block), linked from SKILL.md, naming scripts and agents the skill already uses. Use the P/N graph when steps are conditional or lists must connect, for example:",
+  "      ```",
+  "      P   pick lane          this loop",
+  "      N1  write handoff      this loop",
+  "      N2  run bake           scripts/bake.mjs",
+  "      ```",
+  "      ## Connections",
+  "      ```text",
+  "      P -> N1 (new art)",
+  "      P -> N2 (sources already made)",
+  "      N1 -> N2",
+  "      ```",
+  "   Write anything added for structure (headings, the workflow file name) in English. Existing text may stay in its own language.",
+  "",
+  "B) Keep the skill's own language. Use this only when the skill already has numbered steps under a heading in another language.",
+  `   Do not edit the skill. Add that heading to the languages file (${LANGUAGES_PATH}; on Windows %USERPROFILE%\\.graphtale\\languages.json) instead; every skill then uses it. Merge with the existing file and keep other languages.`,
+  "   The language code is a label of your choice (for example \"nl\"); every language in the file applies to every skill. \"skip\" is optional.",
+  "   {",
+  "     \"languages\": {",
+  "       \"<language code>\": {",
+  "         \"steps\": [\"<heading that introduces steps>\"],",
+  "         \"skip\": [\"<headings to ignore, such as examples or notes>\"]",
+  "       }",
+  "     }",
+  "   }",
+];
+
+const OPTIONS_INTRO = "Ask the user which option they want:";
+const RECOGNIZED_PREFIX = "Graphtale recognizes these section headings";
+
 export function buildFixPrompt(skillName: string, detail: string): string {
   return [
-    `Graphtale (a read-only viewer for Agent Skills) could not fully read the step order of the skill "${skillName}". Help the user make that order explicit.`,
+    `Graphtale (a read-only viewer for Agent Skills) could not fully read the step order of the skill "${skillName}". Help the user repair the skill so agents and Graphtale read the same order.`,
     "",
     FIX_INTRO_END,
     "",
     "Observed:",
     detail,
     "",
-    `Graphtale recognizes these section headings (case-insensitive): ${STEP_SECTION_HEADINGS.join(", ")}. A numbered list or numbered sub-headings under one of them become Flow steps. Sections named ${SKIP_SECTION_HEADINGS.join(", ")} are skipped.`,
+    `${RECOGNIZED_PREFIX} (case-insensitive): ${STEP_SECTION_HEADINGS.join(", ")}. A numbered list or numbered sub-headings under one of them become Flow steps. Sections named ${SKIP_SECTION_HEADINGS.join(", ")} are skipped.`,
     "",
-    "Ask the user which option they want:",
+    ...READ_RULES,
     "",
-    "A) Repair the skill (default). Add ONE of these, using only steps already implied by the existing text:",
-    "   1) In SKILL.md, a numbered section under one of the headings above, for example:",
-    "      ## Workflow",
-    "      1. …",
-    "      2. …",
-    "   2) Or references/workflow.md with numbered headings or a P/N ASCII graph, naming scripts/ and agents the skill already uses.",
-    "   Write anything added for structure (headings, the workflow file name) in English. Existing text may stay in its own language.",
+    OPTIONS_INTRO,
     "",
-    "B) Keep the skill's own language. Use this only when the skill already has numbered steps under a heading in another language.",
-    `   Do not edit the skill. Add that heading to the languages file (${LANGUAGES_PATH}; on Windows %USERPROFILE%\\.graphtale\\languages.json) instead; every skill then uses it. Merge with the existing file and keep other languages:`,
-    "   {",
-    "     \"languages\": {",
-    "       \"<language code>\": {",
-    "         \"steps\": [\"<heading that introduces steps>\"],",
-    "         \"skip\": [\"<headings to ignore, such as examples or notes>\"]",
-    "       }",
-    "     }",
-    "   }",
+    ...OPTIONS,
     "",
-    "After saving, Graphtale refreshes Flow on its own.",
+    "After saving, Graphtale refreshes Flow on its own. If the banner stays, ask the user to copy the new fix prompt: its Observed text names what is still open.",
   ].join("\n");
 }
 
@@ -291,6 +324,8 @@ export interface FixContext {
   skillFile: string;
   languagesFile: string;
   languages: string[];
+  /** Concrete repair Graphtale derived from this skill; it leads, and the options become background. */
+  plan?: { full: string; compact: string };
 }
 
 /** Insert where-to-edit facts after the prompt's intro, so they are read before the options. */
@@ -300,7 +335,7 @@ export function withFixContext(prompt: string, context: FixContext): string {
   if (plugin) {
     lines.push(
       `This file is an installed copy of plugin "${plugin.plugin}" (marketplace "${plugin.marketplace}", version ${plugin.version}). Edits here are lost on the next plugin update.`,
-      "For option A, edit the same file in the plugin's source repository, then update or reinstall the plugin. Graphtale shows the change after that. Option B needs no plugin change.",
+      "Make the repair in the plugin's source repository, then update or reinstall the plugin. Graphtale shows the change after that. The languages file (option B) needs no plugin change.",
     );
   }
   lines.push(context.languages.length > 0
@@ -308,7 +343,17 @@ export function withFixContext(prompt: string, context: FixContext): string {
     : `Languages file: ${context.languagesFile} (not created yet).`);
   const marker = `${FIX_INTRO_END}\n`;
   const block = `${marker}\n${lines.join("\n")}\n`;
-  return prompt.includes(marker) ? prompt.replace(marker, () => block) : `${prompt}\n\n${lines.join("\n")}`;
+  const withFacts = prompt.includes(marker) ? prompt.replace(marker, () => block) : `${prompt}\n\n${lines.join("\n")}`;
+  if (!context.plan) return withFacts;
+  const full = withPlan(withFacts, context.plan.full);
+  return full.length <= COPY_TEXT_LIMIT ? full : withPlan(withFacts, context.plan.compact);
+}
+
+/** The plan goes after Observed; the open choice below it becomes background. */
+function withPlan(prompt: string, plan: string): string {
+  const anchor = `\n${RECOGNIZED_PREFIX}`;
+  const planned = prompt.includes(anchor) ? prompt.replace(anchor, () => `\n${plan}\n${anchor}`) : `${prompt}\n\n${plan}`;
+  return planned.replace(OPTIONS_INTRO, "Background, only needed if the repair above does not fit. Options:");
 }
 
 /** Claude Code plugin installs live at ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/. */
