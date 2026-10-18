@@ -10,6 +10,7 @@ import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
 import { procedureFromRouter } from "./procedureRouter";
+import { repairPlan, type RepairOrigin } from "./repairPlan";
 import { languagesFile, loadVocabulary, type Vocabulary } from "./procedureVocabulary";
 import { frontmatterNeverCloses, stripBom } from "./text";
 
@@ -29,6 +30,7 @@ interface ProcedureLoad {
   candidates: ProcedureCandidate[];
   linked?: string;
   vocabulary: Vocabulary;
+  catalog: CatalogSkill[];
 }
 
 export function parseProcedure(options: ParseProcedureOptions): ProcedureResult {
@@ -63,6 +65,7 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
     candidates: procedureCandidates({ skillFile, skillText, workflowPath, operationsPath, readInput }),
     linked: workflowPath ?? operationsPath,
     vocabulary: languages.vocabulary,
+    catalog: options.catalog,
   };
 }
 
@@ -101,13 +104,20 @@ function procedureFromCandidate(loaded: ProcedureLoad, candidate: { path: string
     skillText: loaded.skillText,
     sourceText: candidate.text,
   });
-  return finish(loaded, graph, flowDiagnosis({
+  const diagnosis = flowDiagnosis({
     detection: capped.detection,
     sourceName: path.basename(candidate.path),
     skillName: loaded.skillName,
     warning: capped.warning,
     hasWarnings: loaded.warnings.length > 0,
-  }));
+  });
+  return finish(loaded, graph, diagnosis, {
+    shape: capped.detection.sourceKind === "P/N rows" ? "pn" : "steps",
+    sourcePath: candidate.path,
+    sourceText: candidate.text,
+    explicit: capped.detection.relationships === "explicit",
+    named: (capped.detection.findings?.length ?? 0) > 0,
+  });
 }
 
 function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): void {
@@ -118,7 +128,7 @@ function noteUnclosed(loaded: ProcedureLoad, candidate: ProcedureCandidate): voi
 
 function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
   const router = procedureFromRouter(loaded);
-  if (router) return finish(loaded, router.graph, router.diagnosis);
+  if (router) return finish(loaded, router.graph, router.diagnosis, unordered("router", loaded.skillFile, loaded.skillText));
   const headings = procedureFromHeadings({
     skillName: loaded.skillName,
     skillRoot: loaded.skillRoot,
@@ -128,7 +138,7 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
     warnings: loaded.warnings,
     vocabulary: loaded.vocabulary,
   });
-  if (headings) return finish(loaded, headings.graph, headings.diagnosis);
+  if (headings) return finish(loaded, headings.graph, headings.diagnosis, unordered("headings", headings.sourcePath, textOf(loaded, headings.sourcePath)));
   if (!loaded.linked) {
     const graph: SkillGraph = {
       skillId: `${loaded.skillName}-procedure`,
@@ -137,32 +147,56 @@ function procedureWithoutSteps(loaded: ProcedureLoad): ProcedureResult {
       nodes: [],
       edges: [],
     };
-    return finish(loaded, graph, emptyDiagnosis(loaded.skillName));
+    return finish(loaded, graph, emptyDiagnosis(loaded.skillName), unordered("none", loaded.skillFile, loaded.skillText));
   }
+  const linkedText = readText(loaded.linked);
   const result = partialResult({
     skillName: loaded.skillName,
     skillRoot: loaded.skillRoot,
     skillFile: loaded.skillFile,
     skillText: loaded.skillText,
     linkedPath: loaded.linked,
-    linkedText: readText(loaded.linked),
+    linkedText,
   });
-  return finish(loaded, result.graph, result.diagnosis);
+  return finish(loaded, result.graph, result.diagnosis, unordered("linked", loaded.linked, linkedText));
+}
+
+function unordered(shape: RepairOrigin["shape"], sourcePath: string, sourceText: string): RepairOrigin {
+  return { shape, sourcePath, sourceText, explicit: false, named: false };
+}
+
+function textOf(loaded: ProcedureLoad, file: string): string {
+  return loaded.candidates.find((candidate) => candidate.path === file)?.text ?? loaded.skillText;
 }
 
 /** Every parseProcedure return must go through finish() so warnings reach the diagnosis. */
-function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDiagnosis): ProcedureResult {
+function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDiagnosis, origin: RepairOrigin): ProcedureResult {
   const notes = [...new Set([...(graph.warnings ?? []), ...loaded.warnings])];
   const extra = notes.filter(note => !diagnosis.message.includes(note));
   const message = extra.length > 0 ? `${diagnosis.message} ${extra.join(" ")}` : diagnosis.message;
   const prompt = extra.length > 0 ? `${diagnosis.fixPrompt}\n\nAlso observed:\n${extra.join("\n")}` : diagnosis.fixPrompt;
+  const confidence = diagnosis.confidence === "high" && notes.length > 0 ? "partial" : diagnosis.confidence;
   const fixPrompt = withFixContext(prompt, {
     skillFile: loaded.skillFile,
     languagesFile: languagesFile(loaded.homedir),
     languages: loaded.vocabulary.languages,
+    plan: confidence === "high" ? undefined : planFor(loaded, origin),
   });
-  const confidence = diagnosis.confidence === "high" && notes.length > 0 ? "partial" : diagnosis.confidence;
   return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
+}
+
+function planFor(loaded: ProcedureLoad, origin: RepairOrigin): string {
+  return repairPlan({
+    skillName: loaded.skillName,
+    skillRoot: loaded.skillRoot,
+    skillFile: loaded.skillFile,
+    skillText: loaded.skillText,
+    vocabulary: loaded.vocabulary,
+    catalog: loaded.catalog,
+    homedir: loaded.homedir,
+    origin,
+    workflowFile: loaded.candidates.find((candidate) => /workflow\.md$/i.test(candidate.path))?.path,
+  });
 }
 
 /** @deprecated Prefer parseProcedure; returns only the graph. */

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- [Skill structure standard](docs/skill-standard.md): where a skill states its order, how to write conditional steps, choices, alternatives and modes, the P/N format, and how to repair a skill without changing its meaning. See [ADR 0011](docs/adr/0011-repair-skills-to-a-standard.md).
+- The fix prompt leads with one repair Graphtale chose for that skill: rename one heading, write a prefilled `references/workflow.md` skeleton plus the line in SKILL.md that links it, or ask whether the skill has an order at all. Routers, references and modes count as valid shapes.
+- The fix prompt names who owns the skill file: a link to its real path, a skill installed by the skills CLI with its upstream source, and another copy with the same name.
+- Plans that edit a file end with a verifier: record file hashes, allow only the planned changes, check the P/N format and ids, and trace every row and label to a source line.
+
+### Changed
+
+- A partial numbered flow names its cause: each conditional step with the word and its line, and separate step lists that Flow does not connect.
+- The heading diagnosis names numbered lists under headings Flow does not read as steps, with their lines, instead of saying the skill has no numbered list.
+- The fix prompt states how Flow reads order: a step heading must start with a recognized name, which whole words make a step conditional, and that separate lists are not connected.
+
 ## [0.2.0] - 2026-10-18
 
 ### Added

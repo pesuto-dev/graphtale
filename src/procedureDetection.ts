@@ -1,9 +1,10 @@
 import { extractPn } from "./procedurePn";
 import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { CONDITIONAL } from "./procedureLists";
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { SourceRange } from "./shared/protocol";
 
-const CONDITIONAL = /\b(if|otherwise|unless|parallel|concurrently|alternatively|choose one|one of|go to|skip|repeat|until)\b/i;
+const MAX_NAMED_STEPS = 4;
 
 export interface DetectedStep { display: string; title: string; body: string; source: SourceRange; resource?: string }
 export interface DetectedLink { from: number; to: number; label?: string; source: SourceRange }
@@ -12,7 +13,7 @@ export interface Detection {
   links: DetectedLink[];
   relationships: "explicit" | "unresolved";
   sourceKind: "numbered headings" | "numbered list" | "P/N rows";
-  /** Named reasons a P/N flow is partial. Empty when every drawn edge is explicit. */
+  /** Named reasons a flow is partial. Empty when every drawn edge is explicit. */
   findings?: string[];
 }
 
@@ -140,26 +141,59 @@ function openListGroup(scan: NumberedScan): StepGroup {
 function detectionFromGroups(usable: StepGroup[]): Detection {
   const steps = usable.flatMap(group => group.steps);
   const links: DetectedLink[] = [];
+  const conditional: string[] = [];
   let offset = 0;
   let uncertain = usable.length > 1;
   for (const group of usable) {
-    uncertain = linkGroup(group, offset, links) || uncertain;
+    uncertain = linkGroup(group, offset, { links, conditional }) || uncertain;
     offset += group.steps.length;
   }
   const sourceKind = usable.at(0)?.kind ?? "numbered list";
-  return { steps, links, sourceKind, relationships: uncertain ? "unresolved" : "explicit" };
+  const findings = [...groupFindings(usable), ...conditionalFindings(conditional)];
+  return { steps, links, sourceKind, relationships: uncertain ? "unresolved" : "explicit", findings };
 }
 
-function linkGroup(group: StepGroup, offset: number, links: DetectedLink[]): boolean {
+function groupFindings(usable: StepGroup[]): string[] {
+  const start = (group: StepGroup): string => String(group.steps.at(0)?.source.startLine ?? 0);
+  const findings = usable.filter(group => group.ambiguous)
+    .map(group => `The list at line ${start(group)} is introduced as a choice, so Flow draws no edges in it.`);
+  if (usable.length < 2) return findings;
+  const lines = usable.map(group => `line ${start(group)}`).join(", ");
+  return [...findings, `${String(usable.length)} separate step lists (${lines}); Flow does not connect them.`];
+}
+
+function conditionalFindings(conditional: string[]): string[] {
+  if (conditional.length === 0) return [];
+  const named = conditional.slice(0, MAX_NAMED_STEPS).join("; ");
+  const more = conditional.length > MAX_NAMED_STEPS ? ` and ${String(conditional.length - MAX_NAMED_STEPS)} more` : "";
+  return [`Conditional wording gives these steps no edge in or out: ${named}${more}.`];
+}
+
+/** The first conditional word in a step and the source line it is on. */
+function conditionalWord(step: DetectedStep): { word: string; line: number } | undefined {
+  const lines = visibleLines(step.body);
+  const index = lines.findIndex(line => CONDITIONAL.test(line));
+  const word = index >= 0 ? CONDITIONAL.exec(lines[index])?.[1] : undefined;
+  return word ? { word, line: step.source.startLine + index } : undefined;
+}
+
+/** Records a conditional step for the diagnosis; true when the step is conditional. */
+function noteConditional(step: DetectedStep, conditional: string[]): boolean {
+  const found = conditionalWord(step);
+  if (found) conditional.push(`step ${step.display} (line ${String(found.line)}, "${found.word}")`);
+  return found !== undefined;
+}
+
+function linkGroup(group: StepGroup, offset: number, out: { links: DetectedLink[]; conditional: string[] }): boolean {
   let uncertain = !!group.ambiguous;
   for (let index = 0; index < group.steps.length; index += 1) {
     const step = group.steps.at(index);
     const next = group.steps.at(index + 1);
     if (!step) continue;
-    const ambiguous = !!group.ambiguous || CONDITIONAL.test(visibleLines(step.body).join("\n"));
+    const ambiguous = !!group.ambiguous || noteConditional(step, out.conditional);
     if (ambiguous) uncertain = true;
-    const nextConditional = next !== undefined && CONDITIONAL.test(visibleLines(next.body).join("\n"));
-    if (next && !ambiguous && !nextConditional) links.push({ from: offset + index, to: offset + index + 1, source: step.source });
+    const nextConditional = next !== undefined && conditionalWord(next) !== undefined;
+    if (next && !ambiguous && !nextConditional) out.links.push({ from: offset + index, to: offset + index + 1, source: step.source });
   }
   return uncertain;
 }
