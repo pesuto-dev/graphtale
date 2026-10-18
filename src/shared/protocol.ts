@@ -133,7 +133,8 @@ export type WebviewToHost =
   | { type: "setDirection"; direction: LayoutDirection }
   | { type: "openSkill"; rootPath: string }
   | { type: "refresh" }
-  | { type: "copyText"; text: string };
+  | { type: "copyText"; text: string }
+  | { type: "openSkillFile" };
 
 type RecordValue = Record<string, unknown>;
 const record = (v: unknown): v is RecordValue => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -184,7 +185,7 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
 export function isWebviewToHost(value: unknown): value is WebviewToHost {
   if (!record(value)) return false;
   switch (value.type) {
-    case "ready": case "refresh": return true;
+    case "ready": case "refresh": case "openSkillFile": return true;
     case "selectNode": return identifier(value.nodeId);
     case "openFile": return identifier(value.nodeId) && optional(value.target, x => oneOf(x, ["instruction", "resource", "wrapper"]));
     case "openSkill": return identifier(value.rootPath);
@@ -237,25 +238,81 @@ export function diagnosisNeededWhen(confidence: ProcedureConfidence): string {
   }
 }
 
+/** English section headings whose numbered list or numbered sub-headings become Flow steps. */
+export const STEP_SECTION_HEADINGS = [
+  "Workflow", "First Steps", "Procedure", "Bootstrap", "How it runs",
+  "Operations", "Instructions", "Usage", "Steps", "Getting started",
+] as const;
+
+/** English section headings Flow skips. */
+export const SKIP_SECTION_HEADINGS = ["Examples", "Alternatives", "Options", "Appendix", "Notes", "Reference", "Choices"] as const;
+
+const LANGUAGES_PATH = "~/.graphtale/languages.json";
+const FIX_INTRO_END = "Do not change what the skill does. Do not invent new work. Show the proposed change as a diff and wait for the user's approval before saving.";
+
 export function buildFixPrompt(skillName: string, detail: string): string {
   return [
-    `The Agent Skill "${skillName}" has instructions that the visual reviewer could not fully interpret. Optionally clarify their intended order for readers.`,
+    `Graphtale (a read-only viewer for Agent Skills) could not fully read the step order of the skill "${skillName}". Help the user make that order explicit.`,
     "",
-    "Do not change what the skill does. Do not invent new work.",
+    FIX_INTRO_END,
     "",
     "Observed:",
     detail,
     "",
-    "Add ONE of these, using only steps already implied by the existing text:",
+    `Graphtale recognizes these section headings (case-insensitive): ${STEP_SECTION_HEADINGS.join(", ")}. A numbered list or numbered sub-headings under one of them become Flow steps. Sections named ${SKIP_SECTION_HEADINGS.join(", ")} are skipped.`,
     "",
-    "1) In SKILL.md, a numbered section such as:",
+    "Ask the user which option they want:",
     "",
-    "## First Steps",
-    "1. …",
-    "2. …",
+    "A) Repair the skill (default). Add ONE of these, using only steps already implied by the existing text:",
+    "   1) In SKILL.md, a numbered section under one of the headings above, for example:",
+    "      ## Workflow",
+    "      1. …",
+    "      2. …",
+    "   2) Or references/workflow.md with numbered headings or a P/N ASCII graph, naming scripts/ and agents the skill already uses.",
+    "   Write anything added for structure (headings, the workflow file name) in English. Existing text may stay in its own language.",
     "",
-    "2) Or a references/workflow.md (or workflow.md) with numbered headings or a P/N ASCII graph, naming scripts/ and agents the skill already uses.",
+    "B) Keep the skill's own language. Use this only when the skill already has numbered steps under a heading in another language.",
+    `   Do not edit the skill. Add that heading to the languages file (${LANGUAGES_PATH}; on Windows %USERPROFILE%\\.graphtale\\languages.json) instead; every skill then uses it. Merge with the existing file and keep other languages:`,
+    "   {",
+    "     \"languages\": {",
+    "       \"<language code>\": {",
+    "         \"steps\": [\"<heading that introduces steps>\"],",
+    "         \"skip\": [\"<headings to ignore, such as examples or notes>\"]",
+    "       }",
+    "     }",
+    "   }",
     "",
-    "After saving, click Refresh in Graphtale. Catalog stays the file list; Flow should show the ordered steps.",
+    "After saving, Graphtale refreshes Flow on its own.",
   ].join("\n");
+}
+
+/** Host facts the AI tool needs to find the right file. */
+export interface FixContext {
+  skillFile: string;
+  languagesFile: string;
+  languages: string[];
+}
+
+/** Insert where-to-edit facts after the prompt's intro, so they are read before the options. */
+export function withFixContext(prompt: string, context: FixContext): string {
+  const lines = [`Skill file: ${context.skillFile}`];
+  const plugin = installedPluginCopy(context.skillFile);
+  if (plugin) {
+    lines.push(
+      `This file is an installed copy of plugin "${plugin.plugin}" (marketplace "${plugin.marketplace}", version ${plugin.version}). Edits here are lost on the next plugin update.`,
+      "For option A, edit the same file in the plugin's source repository, then update or reinstall the plugin. Graphtale shows the change after that. Option B needs no plugin change.",
+    );
+  }
+  lines.push(context.languages.length > 0
+    ? `Languages file: ${context.languagesFile} (adds: ${context.languages.join(", ")}).`
+    : `Languages file: ${context.languagesFile} (not created yet).`);
+  const marker = `${FIX_INTRO_END}\n`;
+  const block = `${marker}\n${lines.join("\n")}\n`;
+  return prompt.includes(marker) ? prompt.replace(marker, () => block) : `${prompt}\n\n${lines.join("\n")}`;
+}
+
+/** Claude Code plugin installs live at ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/. */
+export function installedPluginCopy(filePath: string): { marketplace: string; plugin: string; version: string } | undefined {
+  const match = /[\\/]\.claude[\\/]plugins[\\/]cache[\\/]([^\\/]+)[\\/]([^\\/]+)[\\/]([^\\/]+)[\\/]/.exec(filePath);
+  return match ? { marketplace: match[1], plugin: match[2], version: match[3] } : undefined;
 }

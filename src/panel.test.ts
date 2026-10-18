@@ -70,6 +70,8 @@ it("preserves the last good graph on deletion, retries, and opens exact instruct
   expect(host.messages.at(-1)).toEqual({ type: "copyResult", ok: true });
   host.clipboard.mockRejectedValueOnce(new Error("unavailable")); host.receive({ type: "copyText", text: "test" }); await new Promise(resolve => setImmediate(resolve));
   expect(host.messages.at(-1)).toEqual({ type: "copyResult", ok: false });
+  host.receive({ type: "openSkillFile" }); await new Promise(resolve => setImmediate(resolve));
+  expect(host.open.mock.calls.at(-1)?.[0]).toMatchObject({ fsPath: skillFile });
   host.open.mockRejectedValueOnce(new Error("unavailable")); host.receive({ type: "openFile", nodeId: "step:1" }); await new Promise(resolve => setImmediate(resolve));
   expect(host.messages.at(-1).type).toBe("error");
   expect(host.messages.every(isHostToWebview)).toBe(true);

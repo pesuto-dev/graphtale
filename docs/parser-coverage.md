@@ -32,7 +32,8 @@ observe execution. Parsing never writes skill files.
   Each derived edge refers to its marker or displayed target row. P/N tables without
   diagram markers remain unresolved.
 
-Examples, alternatives, choices, options, notes and appendix sections are excluded.
+Examples, alternatives, choices, options, notes and appendix sections are excluded,
+along with skip headings registered in `~/.graphtale/languages.json` (see below).
 Matching fence characters and lengths are respected; frontmatter retains its line
 positions but is not scanned for steps. A leading byte-order mark is ignored, so
 the frontmatter name still applies on LF and CRLF files. When the closing `---`
@@ -44,6 +45,19 @@ a mapping, including a scalar or a list, warns as well. Any of these warnings ke
 high. Conditional/looping language or a "choose one" introduction prevents
 confident sequencing of the affected list. This conservative vocabulary is not a
 general natural-language parser.
+
+## Router heuristic
+
+When none of the supported structures above match, a table or bullet list in
+SKILL.md whose items point to at least two distinct local `.md` files (markdown
+links or bare paths such as `recipes/day.md`) is shown as unordered branches.
+Each branch is labeled with the first table cell or the link text, its summary is
+the following text, its source range is that row, and the routed file is its
+`resourcePath`. Only files inside the skill folder that exist count; SKILL.md
+itself never does. Edges from SKILL.md are inferred and low confidence. The
+diagnosis is `router: routes to files, no order`. The first qualifying block wins;
+blocks under excluded headings are skipped. This check reads structure and paths,
+not words, so it works in any language. It runs before the heading heuristic.
 
 ## Heading heuristic
 
@@ -76,6 +90,25 @@ After:
 1. Gather: read the ticket and note the product area.
 2. Classify: decide whether this is a bug or a question.
 ```
+
+## Languages
+
+Step and skip section names are English by default. `~/.graphtale/languages.json`
+adds other languages for every skill on the machine:
+
+```json
+{
+  "languages": {
+    "nl": { "steps": ["Werkwijze"], "skip": ["Voorbeelden", "Opmerkingen"] }
+  }
+}
+```
+
+A step heading matches when the section title starts with it; a skip heading
+matches as a whole word anywhere in the title. Both are case-insensitive and
+handle accented letters. An unreadable or malformed file is ignored with a Flow
+warning, and English still applies. Graphtale only reads this file; the fix
+prompt asks the AI tool to create or extend it when the user chooses that option.
 
 ## Source and relationship evidence
 

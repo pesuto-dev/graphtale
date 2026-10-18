@@ -1,8 +1,8 @@
 import { extractPn } from "./procedurePn";
-import { EXCLUDED, HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { SourceRange } from "./shared/protocol";
 
-const SECTIONS = /^(workflow|first steps|procedure|bootstrap|how it runs|operations|instructions|usage|steps|getting started)(?:\b|$)/i;
 const CONDITIONAL = /\b(if|otherwise|unless|parallel|concurrently|alternatively|choose one|one of|go to|skip|repeat|until)\b/i;
 
 export interface DetectedStep { display: string; title: string; body: string; source: SourceRange; resource?: string }
@@ -29,10 +29,11 @@ interface NumberedScan {
   context: string;
   group?: StepGroup;
   headingLevel?: number;
+  vocabulary: Vocabulary;
 }
 
-export function detectSteps(text: string, sourcePath: string): Detection | undefined {
-  const lines = visibleLines(text);
+export function detectSteps(text: string, sourcePath: string, vocabulary: Vocabulary = ENGLISH): Detection | undefined {
+  const lines = visibleLines(text, false, vocabulary);
   const scan: NumberedScan = {
     sourcePath,
     original: text.split(/\r?\n/),
@@ -40,6 +41,7 @@ export function detectSteps(text: string, sourcePath: string): Detection | undef
     parents: [],
     active: true,
     context: "",
+    vocabulary,
   };
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines.at(index) ?? "";
@@ -49,7 +51,7 @@ export function detectSteps(text: string, sourcePath: string): Detection | undef
   }
   finishOpenStep(scan, lines.length);
   const usable = scan.groups.filter(group => group.steps.length > 0);
-  return usable.length > 0 ? detectionFromGroups(usable) : extractPn(text, sourcePath);
+  return usable.length > 0 ? detectionFromGroups(usable) : extractPn(text, sourcePath, vocabulary);
 }
 
 function finishOpenStep(scan: NumberedScan, end: number): void {
@@ -65,7 +67,7 @@ function takeHeading(scan: NumberedScan, index: number, heading: RegExpMatchArra
   scan.context = "";
   popParentsAtOrAbove(scan.parents, level);
   const instruction = level >= 2 ? NUMBERED.exec(title) : null;
-  const excluded = headingExcluded(instruction, title, scan.parents);
+  const excluded = headingExcluded(instruction, title, scan);
   scan.parents.push({ level, excluded });
   if (keepsNestedHeading(scan, level)) return;
   finishOpenStep(scan, index);
@@ -73,7 +75,7 @@ function takeHeading(scan: NumberedScan, index: number, heading: RegExpMatchArra
   if (!numbered) {
     scan.group = undefined;
     scan.headingLevel = undefined;
-    scan.active = !excluded && SECTIONS.test(title);
+    scan.active = !excluded && scan.vocabulary.isStepSection(title);
     return;
   }
   const group = numberedGroup(scan, level);
@@ -86,8 +88,8 @@ function takeHeading(scan: NumberedScan, index: number, heading: RegExpMatchArra
   });
 }
 
-function headingExcluded(instruction: RegExpMatchArray | null, title: string, parents: { excluded: boolean }[]): boolean {
-  return (!instruction && EXCLUDED.test(title)) || parents.some(parent => parent.excluded);
+function headingExcluded(instruction: RegExpMatchArray | null, title: string, scan: NumberedScan): boolean {
+  return (!instruction && scan.vocabulary.isSkipSection(title)) || scan.parents.some(parent => parent.excluded);
 }
 
 function keepsNestedHeading(scan: NumberedScan, level: number): boolean {
