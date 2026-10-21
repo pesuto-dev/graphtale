@@ -91,3 +91,21 @@ it("shows the selected instruction beyond the file preview limit", () => {
   host.receive({ type: "selectNode", nodeId: "skill-md" });
   expect(host.messages.at(-1).payload.text).toBe(prefix.slice(0, PREVIEW_READ_LIMIT_BYTES));
 });
+it("lists an outside link without its contents and previews it only when selected", () => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "host-scope-")));
+  try {
+    host.root = path.join(base, "skills", "demo");
+    fs.mkdirSync(host.root, { recursive: true });
+    fs.mkdirSync(path.join(base, "private"));
+    const secret = path.join(base, "private", "secret.txt");
+    fs.writeFileSync(secret, "TOP-SECRET-VALUE\n");
+    fs.writeFileSync(path.join(host.root, "SKILL.md"), "See [notes](../../private/secret.txt)\n## Instructions\n1. Read\n");
+    GraphtalePanel.createOrShow({ extensionUri: { fsPath: host.root }, workspaceState: { get: () => "TB", update: () => Promise.resolve() } } as unknown as ExtensionContext, host.root);
+    expect(JSON.stringify(host.messages.find(m => m.type === "graph"))).not.toContain("TOP-SECRET-VALUE");
+    host.receive({ type: "selectNode", nodeId: secret });
+    expect(host.messages.at(-1).payload).toMatchObject({ text: "TOP-SECRET-VALUE\n", notice: expect.stringMatching(/outside the skill/) });
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+    host.root = "";
+  }
+});

@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { FLOW_MAX_STEPS } from "./fileAccess";
 import { skillDocumentNode, procedureSourceNode } from "./flowNodes";
 import { numberedLists, type NumberedList } from "./procedureLists";
-import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { matchHeading, popParentsAtOrAbove, visibleLines } from "./procedureLines";
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillGraph, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
@@ -64,16 +64,16 @@ export function detectUnorderedHeadings(text: string, vocabulary: Vocabulary): H
   const parents: HeadingParent[] = [];
   const hits: HeadingHit[] = [];
   for (let i = 0; i < visible.length; i++) {
-    const heading = visible[i].match(HEADING);
+    const heading = matchHeading(visible[i]);
     if (!heading) continue;
-    const level = heading[1].length;
+    const level = heading.level;
     popParentsAtOrAbove(parents, level);
-    const title = heading[2].replace(/\*\*/g, "").trim();
-    const excluded = vocabulary.isSkipSection(heading[2]) || parents.some((parent) => parent.excluded);
+    const title = heading.title.replace(/\*\*/g, "").trim();
+    const excluded = vocabulary.isSkipSection(heading.title) || parents.some((parent) => parent.excluded);
     parents.push({ level, excluded });
     if (excluded || !title || (level !== 2 && level !== 3)) continue;
     let end = i + 1;
-    while (end < visible.length && !HEADING.test(visible[end])) end++;
+    while (end < visible.length && !matchHeading(visible[end])) end++;
     hits.push({ title, body: original.slice(i + 1, end).join("\n").trim(), line: i + 1 });
   }
   return hits;

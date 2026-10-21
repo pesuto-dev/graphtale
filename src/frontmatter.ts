@@ -43,6 +43,7 @@ function formatYamlError(error: YAMLError, bodyStartLine: number): string {
   const fileLine = typeof yamlLine === "number" ? bodyStartLine + yamlLine - 1 : undefined;
   const detail = error.message
     .split("\n")[0]
+    .slice(0, 500)
     .replace(/:?\s*at line \d+, column \d+:?\s*$/i, "")
     .replace(/\.+$/, "")
     .trim();

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Long lines no longer slow parsing down. The heading, link, bare-path, P/N and diagram matchers were quadratic in line length, so a crafted 120 KB skill could block the extension host for close to a minute. A line longer than 1,000 characters is not read as a P/N row, arrow statement or diagram marker.
+- A linked file or agent definition outside the skill, workspace, skills and agent folders (for example `~/.aws/credentials`, also through a symlink) is listed in Catalog but no longer read for its summary, and a `workflow.md` linked from there is not used for Flow. Selecting the file still previews it, with a notice. See [parser coverage](docs/parser-coverage.md#linked-files-outside-the-skill).
+
+### Changed
+
+- The release workflow runs the full CI checks before it publishes, and publishes the VSIX those checks built. `ovsx` is a locked dev dependency instead of an `npx` download, and a manual run is a dry run that stops before publishing.
+
 ## [0.3.0] - 2026-10-18
 
 ### Added

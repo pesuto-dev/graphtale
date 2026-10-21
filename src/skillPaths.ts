@@ -8,6 +8,7 @@ import {
   readTextFile,
   walkTextFiles,
 } from "./fileAccess";
+import { OUTSIDE_SCOPE_SUMMARY } from "./readScope";
 import { firstParagraph, stripFrontmatter } from "./text";
 
 export const ENTRY_ID = "skill-md";
@@ -146,8 +147,14 @@ export function addFolderFiles(
   const inventory = walkTextFiles(dir);
   warnings.push(...inventory.warnings);
   for (const file of inventory.files) {
-    addFileNode(file, path.relative(skillRoot, file), skillRoot, isBlock, nodes, edges, warnings, kind);
+    addFileNode(file, path.relative(skillRoot, file), skillRoot, isBlock, nodes, edges, warnings, { kind });
   }
+}
+
+function fileSummary(filePath: string, warnings: string[]): string {
+  const read = readTextFile(filePath, PREVIEW_READ_LIMIT_BYTES);
+  if (read.warning) warnings.push(read.warning);
+  return firstParagraph(stripFrontmatter(read.text));
 }
 
 export function addFileNode(
@@ -158,7 +165,7 @@ export function addFileNode(
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
   warnings: string[],
-  kindOverride?: NodeKind,
+  extra: { kind?: NodeKind; unread?: boolean } = {},
 ): void {
   if (nodes.size >= INVENTORY_MAX_FILES) return;
   if (!isRegularFile(filePath)) {
@@ -172,18 +179,15 @@ export function addFileNode(
   if (id === ENTRY_ID) {
     return;
   }
-  const kind = kindOverride ?? kindFor(filePath, skillRoot);
+  const kind = extra.kind ?? kindFor(filePath, skillRoot);
   const isBlock = isBlockHint || kind === "agent";
   if (!nodes.has(id)) {
-    const read = readTextFile(filePath, PREVIEW_READ_LIMIT_BYTES);
-    if (read.warning) warnings.push(read.warning);
-    const text = read.text;
     nodes.set(id, {
       id,
       label: path.basename(filePath),
       kind,
       path: filePath,
-      summary: firstParagraph(stripFrontmatter(text)),
+      summary: extra.unread ? OUTSIDE_SCOPE_SUMMARY : fileSummary(filePath, warnings),
       uses: [],
       isBlock,
     });

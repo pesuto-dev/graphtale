@@ -148,6 +148,20 @@ probability or a guarantee that every instruction in arbitrary prose was underst
 The inspector opens the exact instruction line and exposes a separate action
 for resolved resources.
 
+## Linked files outside the skill
+
+Graphtale reads a linked file without a click only when it lies in the skill
+folder, an open workspace folder, a known skills folder (workspace or home
+`.cursor/skills`, `.claude/skills`, `.codex/skills`, `.agents/skills`, and the
+folder of each discovered skill), or `~/.claude/agents` / `~/.codex/agents`.
+Paths are compared after resolving symlinks. A link to any other place, such as
+`~/.aws/credentials` or `../../notes.md`, or an `agent <name>` definition
+that is a symlink to such a place, still appears in Catalog as a shared
+file with its path, but its summary is not read. Selecting it previews the file
+in the inspector with a notice that it is outside those folders, and **Open
+file** works as before. A `workflow.md` or `operations.md` linked from outside
+those folders is not used for Flow; the diagnosis warns instead.
+
 ## Verification
 
 The four original defect fixtures live in `fixtures/parser-regressions` and are

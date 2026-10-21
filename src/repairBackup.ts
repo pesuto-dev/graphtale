@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { languagesFile } from "./procedureVocabulary";
+import { trimChar } from "./text";
 
 export interface BackupInput { skillName: string; skillFile: string; homedir: string }
 
@@ -37,6 +38,7 @@ function realFolder(skillFile: string): string {
 
 /** A folder name that is safe on every platform. */
 function safeName(skillName: string): string {
-  const name = skillName.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  const dashed = skillName.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+  const name = trimChar(dashed, "-");
   return name || "skill";
 }

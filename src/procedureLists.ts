@@ -1,4 +1,4 @@
-import { HEADING, visibleLines } from "./procedureLines";
+import { matchHeading, visibleLines } from "./procedureLines";
 import { conditionalWord, scanGroups, type DetectedStep, type StepGroup } from "./procedureScan";
 import type { Vocabulary } from "./procedureVocabulary";
 
@@ -77,7 +77,7 @@ export function cleanText(text: string): string {
 
 /** The step name before its first sentence break or arrow, at most six words; P/N rows cannot hold arrows. */
 function shortTitle(text: string): string {
-  const named = cleanText(text).split(/\s*(?:->|→)\s*/)[0] ?? "";
+  const named = cleanText(text).split(/->|→/)[0]?.trimEnd() ?? "";
   const first = named.split(/(?<=[a-z0-9)])[.:;]\s| — | – /i)[0] ?? "";
   const words = first.split(" ");
   return (words.length > 6 ? `${words.slice(0, 6).join(" ")}…` : first).replace(/\.$/, "");
@@ -87,7 +87,7 @@ function shortTitle(text: string): string {
 export function skipTitle(text: string, vocabulary: Vocabulary): { line: number; title: string } | undefined {
   const lines = visibleLines(text, false, vocabulary);
   const index = lines.findIndex((line) => /^#\s+\S/.test(line));
-  const title = index >= 0 ? HEADING.exec(lines[index])?.[2] : undefined;
+  const title = index >= 0 ? matchHeading(lines[index])?.title : undefined;
   return title && vocabulary.isSkipSection(title) ? { line: index + 1, title: title.trim() } : undefined;
 }
 

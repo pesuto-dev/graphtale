@@ -1,3 +1,5 @@
+import { PATTERN_LINE_LIMIT } from "./procedureLines";
+
 export interface DiagramStep { startLine: number; endLine: number }
 
 type DiagramLink = (from: number, to: number, line: number, label?: string) => void;
@@ -9,8 +11,14 @@ interface DiagramPass {
   markInvalid: () => void;
 }
 
+/** `word` with a `─` before or after it, as `(?:─.*\bword\b|\bword\b.*─)` did, without its quadratic scan. */
 function diagramWord(word: string, line: string): boolean {
-  return new RegExp(`(?:─.*\\b${word}\\b|\\b${word}\\b.*─)`, "i").test(line);
+  const pattern = new RegExp(`\\b${word}\\b`, "gi");
+  return line.split(/[\r\u2028\u2029]/).some((segment) => {
+    const first = segment.indexOf("─");
+    const last = segment.lastIndexOf("─");
+    return first >= 0 && [...segment.matchAll(pattern)].some(match => match.index > first || match.index + word.length <= last);
+  });
 }
 
 /** A P/N fence line that draws parallel, barrier, join, or a branch marker. */
@@ -62,6 +70,7 @@ function linkBypass(pass: DiagramPass, index: number, label: string): void {
 
 function linkBranchMarker(pass: DiagramPass, index: number): void {
   const line = pass.lines[index] ?? "";
+  if (line.length > PATTERN_LINE_LIMIT) return;
   const branch = /^\s*(.+?)\s+↓(?:\s*[│|])?\s*$/.exec(line);
   if (branch?.[1]) {
     const label = branch[1].trim();

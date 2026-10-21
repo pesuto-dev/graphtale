@@ -2,10 +2,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { FLOW_MAX_STEPS } from "./fileAccess";
 import { skillDocumentNode } from "./flowNodes";
-import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { matchHeading, popParentsAtOrAbove, visibleLines } from "./procedureLines";
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import type { ProcedureDiagnosis, ProcedureResult, SkillEdge, SkillNode } from "./shared/protocol";
 import { buildFixPrompt } from "./shared/protocol";
+import { MARKDOWN_LINK, linkHrefs } from "./text";
 
 /** Diagnosis phrase for a SKILL.md that dispatches to separate files without a stated order. */
 export const ROUTER_HEURISTIC = "router: routes to files, no order";
@@ -13,8 +14,8 @@ export const ROUTER_HEURISTIC = "router: routes to files, no order";
 const TABLE_ROW = /^\s*\|(.+)\|\s*$/;
 const TABLE_RULE = /^\s*\|[\s:|-]+\|\s*$/;
 const BULLET = /^\s*[-*+]\s+(.+)$/;
-const LINK_HREF = /\]\(([^)\s]+\.md)(?:#[^)]*)?\)/;
-const BARE_PATH = /`?((?:\.[\\/])?[\w.-]+(?:[\\/][\w.-]+)*\.md)`?/;
+const PATH_TOKEN = /[\w.\\/-]+/g;
+const PATH_SHAPE = /^(?:\.[\\/])?[\w.-]+(?:[\\/][\w.-]+)*$/;
 
 export interface RouteHit {
   name: string;
@@ -50,12 +51,12 @@ export function detectRoutes(text: string, skillRoot: string, vocabulary: Vocabu
 }
 
 function scanLine(state: ScanState, line: string, lineNo: number): void {
-  const heading = line.match(HEADING);
+  const heading = matchHeading(line);
   if (heading) {
     closeBlock(state);
-    const level = heading[1].length;
+    const level = heading.level;
     popParentsAtOrAbove(state.parents, level);
-    state.parents.push({ level, excluded: state.vocabulary.isSkipSection(heading[2]) });
+    state.parents.push({ level, excluded: state.vocabulary.isSkipSection(heading.title) });
     return;
   }
   if (TABLE_RULE.test(line)) return;
@@ -77,7 +78,7 @@ function routeFromLine(line: string, lineNo: number, root: string): RouteHit | u
   if (!bullet) return undefined;
   const file = localMarkdown(bullet[1], root);
   if (!file) return undefined;
-  const [name, ...rest] = bullet[1].split(/\s+[—–:-]\s+|:\s+/);
+  const [name, ...rest] = bullet[1].replace(/\s+/g, " ").split(/ [—–:-] |: /);
   return { name: plain(name), summary: plain(rest.join(" ")) || plain(name), file, line: lineNo };
 }
 
@@ -92,15 +93,31 @@ function routeFromCells(cells: string[], lineNo: number, root: string): RouteHit
 
 /** A .md path inside the skill folder that exists on disk, other than SKILL.md itself. */
 function localMarkdown(textValue: string, root: string): string | undefined {
-  const href = LINK_HREF.exec(textValue)?.[1] ?? BARE_PATH.exec(textValue)?.[1];
+  const href = linkedMarkdown(textValue) ?? barePath(textValue);
   if (!href || /^[a-z]+:/i.test(href)) return undefined;
   const resolved = path.resolve(root, href.replace(/\\/g, "/"));
   if (!resolved.startsWith(root + path.sep) || path.basename(resolved).toLowerCase() === "skill.md") return undefined;
   return fs.existsSync(resolved) && fs.statSync(resolved).isFile() ? resolved : undefined;
 }
 
+/** First link to a `.md` file, fragment dropped. Linear, unlike the regex it replaces. */
+function linkedMarkdown(textValue: string): string | undefined {
+  return linkHrefs(textValue).map((href) => href.split("#")[0]).find((href) => href.endsWith(".md") && !/\s/.test(href));
+}
+
+/** First bare `dir/file.md` path in the text; like the old regex, a trailing `.` or `.bak` is cut off. */
+function barePath(textValue: string): string | undefined {
+  for (const [token] of textValue.matchAll(PATH_TOKEN)) {
+    const stripped = token.replace(/^[\\/]+/, "");
+    const end = stripped.lastIndexOf(".md");
+    const candidate = end > 0 ? stripped.slice(0, end + 3) : "";
+    if (PATH_SHAPE.test(candidate)) return candidate;
+  }
+  return undefined;
+}
+
 function plain(value: string): string {
-  return value.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[`*]/g, "").trim();
+  return value.replace(MARKDOWN_LINK, "$1").replace(/[`*]/g, "").trim();
 }
 
 /** SKILL.md as a router: each route is an unordered branch to the file that holds its instructions. */

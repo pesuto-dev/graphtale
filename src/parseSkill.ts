@@ -4,6 +4,7 @@ import type { CatalogSkill, SkillEdge, SkillGraph, SkillNode } from "./shared/pr
 import { parseFrontmatter } from "./frontmatter";
 import { INVENTORY_MAX_FILES, readRequiredText } from "./fileAccess";
 import { addDispatchedAgents, addMarkdownLinks, addSkillMentions } from "./skillLinks";
+import { readScope } from "./readScope";
 import { ENTRY_ID, addFolderFiles, usesFor } from "./skillPaths";
 import { firstParagraph, stripFrontmatter } from "./text";
 
@@ -13,6 +14,7 @@ export type ParseOptions = {
   skillRoot: string;
   catalog: CatalogSkill[];
   homedir?: string;
+  workspaceFolders?: string[];
 };
 
 export function parseSkill(options: ParseOptions): SkillGraph {
@@ -23,6 +25,7 @@ export function parseSkill(options: ParseOptions): SkillGraph {
   const meta = parseFrontmatter(skillText);
   const folderName = path.basename(skillRoot);
   const skillName = meta.name || folderName;
+  const scope = readScope({ skillRoot, homedir, workspaceFolders: options.workspaceFolders, catalog: options.catalog });
   const nodes = new Map<string, SkillNode>();
   const edges: SkillEdge[] = [];
   const warnings: string[] = [];
@@ -37,12 +40,12 @@ export function parseSkill(options: ParseOptions): SkillGraph {
     isEntry: true,
   });
 
-  addMarkdownLinks(skillText, skillRoot, homedir, nodes, edges, warnings);
+  addMarkdownLinks(skillText, skillRoot, scope, nodes, edges, warnings);
   addFolderFiles(skillRoot, "prompts", "agent", true, nodes, edges, warnings);
   addFolderFiles(skillRoot, "references", "reference", false, nodes, edges, warnings);
   addFolderFiles(skillRoot, "scripts", "script", false, nodes, edges, warnings);
   addFolderFiles(skillRoot, "agents", undefined, false, nodes, edges, warnings);
-  addDispatchedAgents(skillText, skillRoot, homedir, nodes, edges, warnings);
+  addDispatchedAgents(skillText, skillRoot, scope, nodes, edges, warnings);
   addSkillMentions(skillText, skillName, options.catalog, nodes, edges);
   if (nodes.size >= INVENTORY_MAX_FILES) warnings.push(`Catalog stopped after ${INVENTORY_MAX_FILES} files.`);
 

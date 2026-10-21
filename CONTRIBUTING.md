@@ -80,7 +80,7 @@ the VSIX on Ubuntu with Node 22.
 Users install a `.vsix` (`npm run package`, which runs `vscode:prepublish`).
 `prepublishOnly` runs the same compile so a future `npm publish` would pack the
 built extension as well. Publishing only happens from the release workflow on
-a `v*` tag; see [docs/release.md](docs/release.md).
+a `v*` tag, after the CI workflow passes on that commit; see [docs/release.md](docs/release.md).
 
 `.vscodeignore` chooses the VSIX contents. `vsce` refuses to combine that file
 with a `files` property in `package.json`, so the npm tarball uses `.npmignore`

@@ -9,6 +9,9 @@ Catalog text and inspector previews read at most 64 KiB per file. Binary files
 are listed where discovered but their content is not previewed. Warnings include
 file labels, never file contents. YAML diagnostics do not dump source excerpts.
 
+A line longer than 1,000 characters is never read as a P/N row, arrow statement
+or diagram marker.
+
 Each recursive inventory visits at most 2,000 directory entries, descends eight
 levels and collects at most 400 files. The combined Catalog is capped at 400
 nodes, and Flow at 500 steps. A longer flow warns with the total and the number

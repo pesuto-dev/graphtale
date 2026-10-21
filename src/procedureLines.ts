@@ -1,7 +1,49 @@
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 import { maskFrontmatter } from "./text";
 
-export const HEADING = /^(#{1,6})\s+(.+?)\s*#*$/;
+export interface Heading { level: number; title: string }
+
+/**
+ * P/N rows, arrow prose and diagram markers are short. Their lazy patterns are quadratic
+ * on long lines, so longer lines are never read as one.
+ */
+export const PATTERN_LINE_LIMIT = 1000;
+
+const HEADING_OPEN = /^(#{1,6})\s/;
+const WHITESPACE = /\s/;
+const LINE_BREAK = /[\n\r\u2028\u2029]/;
+
+/**
+ * Same result as `/^(#{1,6})\s+(.+?)\s*#*$/`, in linear time: that regex is quadratic
+ * on long lines and froze the host on a crafted SKILL.md.
+ */
+export function matchHeading(line: string): Heading | undefined {
+  const open = HEADING_OPEN.exec(line);
+  if (!open) return undefined;
+  const level = open[1].length;
+  const rest = line.slice(level);
+  let gap = 0;
+  while (gap < rest.length && WHITESPACE.test(rest[gap])) gap++;
+  const title = gap < rest.length ? titleBeforeClose(rest.slice(gap)) : titleInGap(rest, gap);
+  return title === undefined ? undefined : { level, title };
+}
+
+/** Shortest non-empty prefix whose remainder is spaces then closing `#`s. */
+function titleBeforeClose(text: string): string | undefined {
+  let close = text.length;
+  while (close > 0 && text[close - 1] === "#") close--;
+  while (close > 0 && WHITESPACE.test(text[close - 1])) close--;
+  const title = text.slice(0, Math.max(1, close));
+  return LINE_BREAK.test(title) ? undefined : title;
+}
+
+/** A line of hashes and spaces only: the regex keeps one space as the title. */
+function titleInGap(rest: string, gap: number): string | undefined {
+  for (let index = gap - 1; index >= 1; index--) {
+    if (!LINE_BREAK.test(rest[index])) return rest[index];
+  }
+  return undefined;
+}
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 
@@ -56,8 +98,8 @@ export function visibleLines(text: string, pn = false, vocabulary: Vocabulary = 
       const hidden = fencedLine(delimiter, fence, () => { fence = undefined; });
       return hidden ?? line;
     }
-    const heading = HEADING.exec(line);
-    if (heading) excluded = vocabulary.isSkipSection(heading[2]);
+    const heading = matchHeading(line);
+    if (heading) excluded = vocabulary.isSkipSection(heading.title);
     if (!delimiter) return line;
     fence = openFence(delimiter, excluded, pn);
     return "";
