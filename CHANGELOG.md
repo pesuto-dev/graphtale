@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
 ### Security
 
 - Long lines no longer slow parsing down. The heading, link, bare-path, P/N and diagram matchers were quadratic in line length, so a crafted 120 KB skill could block the extension host for close to a minute. A line longer than 1,000 characters is not read as a P/N row, arrow statement or diagram marker.
@@ -94,7 +96,8 @@ version; it was not released to npm, the Visual Studio Marketplace, or Open VSX.
 - Open a skill from the Command Palette, the Graphtale sidebar, or a `SKILL.md` editor or explorer action. **Refresh** reloads the open skill. **Open instruction**, **Open referenced resource**, and **Open file** return to the source.
 - Discovery of workspace and user skill roots used by Cursor, Claude Code, Codex, and `.agents/skills`, including skills recorded in Claude’s installed-plugins file.
 
-[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/pesuto-dev/graphtale/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/pesuto-dev/graphtale/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pesuto-dev/graphtale/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/pesuto-dev/graphtale/compare/v0.1.0...v0.1.1
