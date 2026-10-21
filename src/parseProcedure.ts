@@ -9,12 +9,13 @@ import { flowDiagnosis, limitFlowSteps } from "./procedureDiagnosis";
 import { detectSteps } from "./procedureDetection";
 import { buildStepGraph, partialResult, wrapWithSource } from "./procedureGraph";
 import { findLinkedPath, resolveResource } from "./procedureResources";
+import { readScope } from "./readScope";
 import { procedureFromRouter } from "./procedureRouter";
 import { repairPlan, type RepairOrigin, type RepairPlanText } from "./repairPlan";
 import { languagesFile, loadVocabulary, type Vocabulary } from "./procedureVocabulary";
 import { frontmatterNeverCloses, stripBom } from "./text";
 
-export interface ParseProcedureOptions { skillRoot: string; catalog: CatalogSkill[]; homedir?: string }
+export interface ParseProcedureOptions { skillRoot: string; catalog: CatalogSkill[]; homedir?: string; workspaceFolders?: string[] }
 /** @deprecated use ParseProcedureOptions */
 export type ParsePipelineOptions = ParseProcedureOptions;
 
@@ -57,8 +58,9 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
   const homedir = options.homedir ?? os.homedir();
   const languages = loadVocabulary(homedir);
   if (languages.warning) warnings.push(languages.warning);
-  const workflowPath = findLinkedPath(skillText, skillRoot, homedir, "workflow.md");
-  const operationsPath = findLinkedPath(skillText, skillRoot, homedir, "operations.md");
+  const scope = readScope({ skillRoot, homedir, workspaceFolders: options.workspaceFolders, catalog: options.catalog });
+  const workflowPath = findLinkedPath(skillText, scope, "workflow.md", warnings);
+  const operationsPath = findLinkedPath(skillText, scope, "operations.md", warnings);
   return {
     skillName: meta.name || path.basename(skillRoot),
     skillRoot, skillFile, skillText, homedir, warnings,

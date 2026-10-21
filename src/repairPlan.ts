@@ -7,10 +7,9 @@ import { backupSteps } from "./repairBackup";
 import { ownershipFacts } from "./repairOwnership";
 import { DONE_BANNER, WORKFLOW_LINK, renderSteps, workflowSteps, type PlanStep } from "./repairWorkflow";
 import type { CatalogSkill } from "./shared/protocol";
+import { linkHrefs } from "./text";
 
 export { DONE_BANNER, WORKFLOW_LINK } from "./repairWorkflow";
-
-const LINKS_WORKFLOW = /\]\([^)]*workflow\.md(?:#[^)]*)?\)/i;
 
 /** What produced the diagnosis, so the plan targets the file Flow actually read. */
 export interface RepairOrigin {
@@ -150,7 +149,7 @@ function renameRecipe(list: NumberedList, file: string): Recipe {
 function workflowRecipe(input: RepairInput, lists: NumberedList[], listFile: string): Recipe {
   const target = input.workflowFile ? relative(input, input.workflowFile) : "references/workflow.md";
   const exists = input.workflowFile !== undefined;
-  const link = !LINKS_WORKFLOW.test(input.skillText);
+  const link = !linkHrefs(input.skillText).some((href) => href.split("#")[0].toLowerCase().endsWith("workflow.md"));
   const { steps, skeleton } = workflowSteps({
     skillName: input.skillName,
     skillRoot: input.skillRoot,

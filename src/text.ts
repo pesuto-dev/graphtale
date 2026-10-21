@@ -63,6 +63,26 @@ export function firstParagraph(text: string): string {
   return (lines[0] ?? "").slice(0, 220);
 }
 
+/**
+ * `[label](href)`. Neither part may hold a bracket, nor the href a paren: that keeps
+ * the scan linear on long lines. Use with matchAll or replace only (it is global).
+ */
+export const MARKDOWN_LINK = /\[([^[\]]*)\]\(([^()[\]]*)\)/g;
+
+/** Hrefs of Markdown links, in order. */
+export function linkHrefs(text: string): string[] {
+  return [...text.matchAll(MARKDOWN_LINK)].map((match) => match[2]);
+}
+
+/** Drop `char` from both ends without a regex (`^c+|c+$` is quadratic on long runs). */
+export function trimChar(value: string, char: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === char) start++;
+  while (end > start && value[end - 1] === char) end--;
+  return value.slice(start, end);
+}
+
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

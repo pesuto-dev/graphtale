@@ -13,9 +13,8 @@ import {
   resolveAgentDefinition,
   resolveHref,
 } from "./skillPaths";
-import { escapeRegExp, firstParagraph, stripFrontmatter } from "./text";
-
-export const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
+import { OUTSIDE_SCOPE_SUMMARY, inReadScope, type ReadScope } from "./readScope";
+import { escapeRegExp, firstParagraph, linkHrefs, stripFrontmatter } from "./text";
 
 export function wrapperAroundLink(
   skillText: string,
@@ -38,36 +37,36 @@ export function wrapperAroundLink(
 export function addMarkdownLinks(
   skillText: string,
   skillRoot: string,
-  homedir: string,
+  scope: ReadScope,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
   warnings: string[],
 ): void {
   let scanned = 0;
-  for (const match of skillText.matchAll(LINK_RE)) {
+  for (const link of linkHrefs(skillText)) {
     if (++scanned > INVENTORY_MAX_FILES) { warnings.push(`Catalog stopped scanning links after ${INVENTORY_MAX_FILES} entries.`); break; }
     if (nodes.size >= INVENTORY_MAX_FILES) break;
-    const href = match[2].trim();
-    const resolved = resolveHref(href, skillRoot, homedir);
+    const href = link.trim();
+    const resolved = resolveHref(href, skillRoot, scope.homedir);
     if (!resolved) {
       continue;
     }
-    addFileNode(resolved, href, skillRoot, false, nodes, edges, warnings);
+    addFileNode(resolved, href, skillRoot, false, nodes, edges, warnings, { unread: !inReadScope(resolved, scope) });
   }
 }
 
 export function catalogWorkflowPath(
   skillText: string,
   skillRoot: string,
-  homedir: string,
+  scope: ReadScope,
 ): string | undefined {
-  for (const match of skillText.matchAll(LINK_RE)) {
-    const href = match[2].trim().split("#")[0];
+  for (const link of linkHrefs(skillText)) {
+    const href = link.trim().split("#")[0];
     if (!/workflow\.md$/i.test(href)) {
       continue;
     }
-    const resolved = resolveHref(href, skillRoot, homedir);
-    if (resolved && isRegularFile(resolved)) {
+    const resolved = resolveHref(href, skillRoot, scope.homedir);
+    if (resolved && isRegularFile(resolved) && inReadScope(resolved, scope)) {
       return resolved;
     }
   }
@@ -89,13 +88,13 @@ export function catalogWorkflowPath(
 export function addDispatchedAgents(
   skillText: string,
   skillRoot: string,
-  homedir: string,
+  scope: ReadScope,
   nodes: Map<string, SkillNode>,
   edges: SkillEdge[],
   warnings: string[],
 ): void {
   const corpora = [skillText];
-  const workflow = catalogWorkflowPath(skillText, skillRoot, homedir);
+  const workflow = catalogWorkflowPath(skillText, skillRoot, scope);
   if (workflow) {
     const read = readTextFile(workflow, PREVIEW_READ_LIMIT_BYTES);
     if (read.warning) warnings.push(read.warning);
@@ -112,7 +111,7 @@ export function addDispatchedAgents(
       }
       seen.add(name);
 
-      const resolved = resolveAgentDefinition(name, skillRoot, homedir);
+      const resolved = resolveAgentDefinition(name, skillRoot, scope.homedir);
       const id = resolved ? nodeIdFor(resolved, skillRoot) : `agent:${name}`;
       if (nodes.has(id)) {
         const existing = nodes.get(id);
@@ -125,7 +124,9 @@ export function addDispatchedAgents(
 
       let summary = `Agent ${name} (referenced in the flow)`;
       let excerpt: string | undefined;
-      if (resolved && isRegularFile(resolved)) {
+      if (resolved && !inReadScope(resolved, scope)) {
+        summary = OUTSIDE_SCOPE_SUMMARY;
+      } else if (resolved && isRegularFile(resolved)) {
         const read = readTextFile(resolved, PREVIEW_READ_LIMIT_BYTES);
         if (read.warning) warnings.push(read.warning);
         const body = read.text;

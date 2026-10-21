@@ -101,7 +101,8 @@ shapes in `src/shared/protocol.ts` are an internal contract for this extension.
 
 `npm publish` would run `prepublishOnly` (`npm run compile`) and pack what
 `.npmignore` allows. The VSIX uses `.vscodeignore` instead, and that file
-leaves `docs/media` out of the package. Publication is a maintainer step. It is not part of CI.
+leaves `docs/media` out of the package. Publishing runs from the release workflow on a
+`v*` tag, after the full CI checks pass; see [docs/release.md](docs/release.md).
 
 ## What the parser understands
 
@@ -119,8 +120,10 @@ produce an empty or partial diagnosis. Read limits are in [file limits](docs/fil
 ## Privacy
 
 The extension reads skills in the workspace and in home skill directories, plus
-local resources those skills reference. It has no backend, telemetry service,
-or skill execution. Clipboard writes happen only when you request them.
+local resources those skills reference. A linked file outside the skill,
+workspace, skills and agent folders is listed but only read when you select it;
+see [parser coverage](docs/parser-coverage.md#linked-files-outside-the-skill).
+It has no backend, telemetry service, or skill execution. Clipboard writes happen only when you request them.
 Symlinked skill roots are deduplicated by real path. Recursive Catalog
 inventory does not follow symlinks.
 

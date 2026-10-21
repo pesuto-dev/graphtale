@@ -1,20 +1,23 @@
-# Builds the VSIX for a v* tag, publishes it to Open VSX, publishes that same
-# VSIX to the Visual Studio Marketplace when VSCE_PAT is set, and attaches it
-# to the GitHub Release. The pesuto Open VSX namespace already exists; this
-# workflow does not create it. Set repository secret OVSX_PAT before pushing
-# the tag. VSCE_PAT is optional: without it, Marketplace publish is skipped.
+# On a v* tag: runs the full CI checks, then publishes the VSIX those checks built to
+# Open VSX, to the Visual Studio Marketplace when VSCE_PAT is set, and to the GitHub
+# Release. The pesuto Open VSX namespace already exists; this workflow does not create
+# it. Set repository secret OVSX_PAT before pushing the tag. VSCE_PAT is optional:
+# without it, Marketplace publish is skipped.
+# Run it by hand (workflow_dispatch) for a dry run: every job and step runs except the
+# three publish steps.
 name: Release
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  preflight:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,16 +34,8 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Check tag matches package version
+        if: github.event_name == 'push'
         run: |
           version="$(node -p "require('./package.json').version")"
           tag="${GITHUB_REF_NAME#v}"
@@ -49,34 +44,71 @@ jobs:
             exit 1
           fi
 
-      - name: Package VSIX
-        run: npm run package
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    needs: [preflight, checks]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Only the locked ovsx and vsce are needed here; no install scripts run in the job
+      # that holds the publish tokens.
+      - name: Install publish tools
+        run: npm ci --ignore-scripts
+
+      - name: Download the tested VSIX
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: vsix
+          path: vsix
 
       - name: Resolve VSIX path
         id: vsix
         shell: bash
         run: |
           shopt -s nullglob
-          files=(graphtale-*.vsix)
+          files=(vsix/graphtale-*.vsix)
           if [ "${#files[@]}" -ne 1 ]; then
             echo "::error::Expected exactly one graphtale-*.vsix file, found ${#files[@]}."
             exit 1
           fi
           echo "path=${files[0]}" >> "${GITHUB_OUTPUT}"
-          echo "Packaged: ${files[0]}"
+          echo "Publishing: ${files[0]}"
+
+      - name: Check publish tools
+        run: |
+          npx --no-install ovsx --version
+          npx --no-install vsce --version
 
       # If this step succeeds and a later step fails, do not publish the same
       # version to Open VSX again. Attach the existing VSIX instead.
       - name: Publish to Open VSX
+        if: github.event_name == 'push'
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx --yes ovsx@1.3.0 publish "${{ steps.vsix.outputs.path }}" -p "${OVSX_PAT}"
+        run: npx --no-install ovsx publish "${{ steps.vsix.outputs.path }}" -p "${OVSX_PAT}"
 
       # Best-effort and after Open VSX. continue-on-error lets the GitHub
       # Release step run when Marketplace publish fails, without turning the
       # job red and inviting a re-run that would publish the same version to
       # Open VSX again. A missing token exits 0 with a notice.
       - name: Publish to Visual Studio Marketplace
+        if: github.event_name == 'push'
         continue-on-error: true
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -85,12 +117,13 @@ jobs:
             echo "::notice title=Marketplace skipped::VSCE_PAT is not set. Skipping Visual Studio Marketplace publish. Open VSX and the GitHub Release still run."
             exit 0
           fi
-          if ! npx --yes @vscode/vsce@4.0.0 publish --packagePath "${{ steps.vsix.outputs.path }}" -p "${VSCE_PAT}"; then
+          if ! npx --no-install vsce publish --packagePath "${{ steps.vsix.outputs.path }}" -p "${VSCE_PAT}"; then
             echo "::error title=Marketplace publish failed::vsce publish failed for ${{ steps.vsix.outputs.path }}. Open VSX already received this VSIX. The GitHub Release step still runs. Fix the publisher or VSCE_PAT, then publish this same VSIX with vsce publish --packagePath."
             exit 1
           fi
 
       - name: Attach VSIX to the GitHub Release
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

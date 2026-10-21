@@ -87,3 +87,13 @@ it("never routes to SKILL.md itself, whatever its case", () => {
   const result = parse({ "SKILL.md": skill, "a.md": "x", "b.md": "y" });
   expect(result.graph.nodes.filter(node => node.id.startsWith("step:")).map(node => node.label)).not.toContain("Self");
 });
+
+it("finds a bare route path followed by a full stop", () => {
+  const result = parse({
+    "SKILL.md": "# Router\n\n- Billing: see refs/billing.md.\n- Support: refs/support.md\n",
+    "refs/billing.md": "# Billing\n",
+    "refs/support.md": "# Support\n",
+  });
+  const routes = result.graph.nodes.filter(node => node.id.startsWith("step:")).map(node => node.resourcePath);
+  expect(routes).toEqual([path.join(result.root, "refs/billing.md"), path.join(result.root, "refs/support.md")]);
+});

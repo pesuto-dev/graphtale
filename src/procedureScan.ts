@@ -1,4 +1,4 @@
-import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { matchHeading, popParentsAtOrAbove, type Heading, visibleLines } from "./procedureLines";
 import type { Vocabulary } from "./procedureVocabulary";
 import type { SourceRange } from "./shared/protocol";
 
@@ -50,7 +50,7 @@ export function scanGroups(text: string, sourcePath: string, vocabulary: Vocabul
   const scan: NumberedScan = { sourcePath, original: text.split(/\r?\n/), groups: [], parents: [], active: true, context: "", vocabulary, options };
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines.at(index) ?? "";
-    const heading = HEADING.exec(line);
+    const heading = matchHeading(line);
     if (heading) takeHeading(scan, index, heading);
     else takeListLine(scan, index, line);
   }
@@ -81,9 +81,8 @@ function numberedTitle(scan: NumberedScan, title: string, level: number): { matc
   return loose ? { match: loose, stepLike: true } : undefined;
 }
 
-function takeHeading(scan: NumberedScan, index: number, heading: RegExpMatchArray): void {
-  const level = heading[1].length;
-  const title = heading[2];
+function takeHeading(scan: NumberedScan, index: number, heading: Heading): void {
+  const { level, title } = heading;
   scan.context = "";
   popParentsAtOrAbove(scan.parents, level);
   const instruction = numberedTitle(scan, title, level);

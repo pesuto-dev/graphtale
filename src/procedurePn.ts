@@ -1,7 +1,7 @@
 import { applyDiagramLinks, lineIsDiagramMarker } from "./procedureDiagram";
 import type { DetectedLink, DetectedStep, Detection } from "./procedureDetection";
 import { cycleFinding, duplicateFindings, reaches } from "./procedureFindings";
-import { HEADING, popParentsAtOrAbove, visibleLines } from "./procedureLines";
+import { PATTERN_LINE_LIMIT, matchHeading, popParentsAtOrAbove, visibleLines } from "./procedureLines";
 import { ENGLISH, type Vocabulary } from "./procedureVocabulary";
 
 interface PnGraph { links: DetectedLink[]; findings: string[]; invalid: boolean }
@@ -38,11 +38,11 @@ export function extractPn(text: string, sourcePath: string, vocabulary: Vocabula
 function readPnLines(text: string, vocabulary: Vocabulary): string[] {
   const parents: { level: number; excluded: boolean }[] = [];
   return visibleLines(text, true, vocabulary).map(line => {
-    const heading = line.match(HEADING);
+    const heading = matchHeading(line);
     if (!heading) return parents.some(parent => parent.excluded) ? "" : line;
-    const level = heading[1].length;
+    const level = heading.level;
     popParentsAtOrAbove(parents, level);
-    parents.push({ level, excluded: vocabulary.isSkipSection(heading[2]) || parents.some(parent => parent.excluded) });
+    parents.push({ level, excluded: vocabulary.isSkipSection(heading.title) || parents.some(parent => parent.excluded) });
     return parents.some(parent => parent.excluded) ? "" : line;
   });
 }
@@ -52,9 +52,9 @@ function readPnSteps(lines: string[], sourcePath: string, vocabulary: Vocabulary
   let excluded = false;
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines.at(index) ?? "";
-    const heading = HEADING.exec(line);
-    if (heading) excluded = vocabulary.isSkipSection(heading[2]);
-    if (excluded) continue;
+    const heading = matchHeading(line);
+    if (heading) excluded = vocabulary.isSkipSection(heading.title);
+    if (excluded || line.length > PATTERN_LINE_LIMIT) continue;
     const row = /^\s*(P|N\d+[a-z]?)\s+(.+?)(?:\s{2,}(.+))?\s*$/i.exec(line);
     const sequential = /^(P|N\d+[a-z]?)\s+(?:then|next|(?:is\s+)?followed by|continue(?:s)?\s+(?:with|to)|go(?:es)?\s+to)\s+(P|N\d+[a-z]?)\.?$/i.exec(line.trim());
     if (!row || /->|→/.test(row[2]) || sequential) continue;
@@ -137,6 +137,7 @@ function scanPnStatements(lines: string[], steps: DetectedStep[], sourcePath: st
 }
 
 function readPnLine(line: string, lineNumber: number, id: string, add: PnAdd): PnMatch {
+  if (line.length > PATTERN_LINE_LIMIT) return "absent";
   const trimmed = line.trim();
   const edge = /^(P|N\d+[a-z]?)\s*(?:->|→)\s*(P|N\d+[a-z]?)(?:\s+\(([^)]+)\))?\s*$/i.exec(trimmed);
   if (edge?.[1] && edge[2]) {

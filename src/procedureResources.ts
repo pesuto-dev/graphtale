@@ -1,20 +1,27 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { inReadScope, type ReadScope } from "./readScope";
+import { linkHrefs } from "./text";
 
-const LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
-
-/** First on-disk file linked from the skill text, then the conventional relative path. */
-export function findLinkedPath(text: string, skillRoot: string, homedir: string, basename: string): string | undefined {
+/**
+ * First on-disk file linked from the skill text, then the conventional relative path.
+ * A link outside the read scope is skipped with a warning: Flow would show its contents unasked.
+ */
+export function findLinkedPath(text: string, scope: ReadScope, basename: string, warnings: string[]): string | undefined {
   const candidates: string[] = [];
-  for (const match of text.matchAll(LINK_RE)) {
-    const href = match[2].trim().split("#")[0];
+  for (const link of linkHrefs(text)) {
+    const href = link.trim().split("#")[0];
     if (path.basename(href).toLowerCase() === basename) candidates.push(href);
   }
   candidates.push(basename, path.join("references", basename));
+  let outside = false;
   for (const candidate of candidates) {
-    const resolved = candidate.startsWith("~/") ? path.resolve(homedir, candidate.slice(2)) : path.resolve(skillRoot, candidate);
-    if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
+    const resolved = candidate.startsWith("~/") ? path.resolve(scope.homedir, candidate.slice(2)) : path.resolve(scope.skillRoot, candidate);
+    if (!existingFile(resolved)) continue;
+    if (inReadScope(resolved, scope)) return resolved;
+    outside = true;
   }
+  if (outside) warnings.push(`Linked ${basename} is outside the skill and workspace folders, so Flow did not read it.`);
   return undefined;
 }
 
@@ -23,7 +30,7 @@ function existingFile(filePath: string): string | undefined {
 }
 
 function resolveMarkdownLink(resource: string, homedir: string, sourcePath: string): string | undefined {
-  const markdownLink = [...resource.matchAll(LINK_RE)][0]?.[2]?.split("#")[0];
+  const markdownLink = linkHrefs(resource)[0]?.split("#")[0];
   if (!markdownLink || /^[a-z]+:\/\//i.test(markdownLink)) return undefined;
   const linked = markdownLink.startsWith("~/")
     ? path.resolve(homedir, markdownLink.slice(2))

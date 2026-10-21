@@ -9,6 +9,7 @@ import { discoverSkills } from "./discover";
 import { parseProcedure } from "./parseProcedure";
 import { languagesFile } from "./procedureVocabulary";
 import { parseSkill, wrapperAroundLink } from "./parseSkill";
+import { OUTSIDE_SCOPE_NOTICE, inReadScope, readScope } from "./readScope";
 import { extraWatchFiles, isWatchedChange } from "./shared/watch";
 import type {
   CatalogSkill,
@@ -108,8 +109,9 @@ export class GraphtalePanel {
     this.attemptedRoot = skillRoot;
     try {
       this.refreshCatalog();
-      const graph = parseSkill({ skillRoot, catalog: this.catalog });
-      const parsed = parseProcedure({ skillRoot, catalog: this.catalog });
+      const workspaceFolders = workspaceFolderPaths();
+      const graph = parseSkill({ skillRoot, catalog: this.catalog, workspaceFolders });
+      const parsed = parseProcedure({ skillRoot, catalog: this.catalog, workspaceFolders });
       graph.warnings = [...(graph.warnings ?? []), ...this.discoveryWarnings];
       this.graph = graph;
       this.procedure = parsed.graph;
@@ -244,7 +246,7 @@ export class GraphtalePanel {
       nodeId: node.id,
       path: node.path,
       text,
-      notice: preview.warning,
+      notice: [this.outsideNotice(node.path), preview.warning].filter(Boolean).join(" ") || undefined,
     };
     if (node.isBlock && this.graph && !node.excerpt) {
       const skillFile = path.join(this.graph.rootPath, "SKILL.md");
@@ -256,6 +258,14 @@ export class GraphtalePanel {
       }
     }
     this.post({ type: "fileContent", payload });
+  }
+
+  /** A click still previews the file; the notice says it lies outside what Graphtale reads unasked. */
+  private outsideNotice(filePath: string): string | undefined {
+    const skillRoot = this.graph?.rootPath;
+    if (!skillRoot) return undefined;
+    const scope = readScope({ skillRoot, homedir: os.homedir(), workspaceFolders: workspaceFolderPaths(), catalog: this.catalog });
+    return inReadScope(filePath, scope) ? undefined : OUTSIDE_SCOPE_NOTICE;
   }
 
   private async copyText(text: string): Promise<void> {
@@ -293,7 +303,7 @@ export class GraphtalePanel {
   }
 
   private refreshCatalog(): void {
-    const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
+    const folders = workspaceFolderPaths();
     this.discoveryWarnings = [];
     this.catalog = discoverSkills({ workspaceFolders: folders, onWarning: warning => this.discoveryWarnings.push(warning) });
   }
@@ -335,6 +345,10 @@ export class GraphtalePanel {
   </body>
 </html>`;
   }
+}
+
+function workspaceFolderPaths(): string[] {
+  return (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
 }
 
 function emptyGraph(): SkillGraph {
