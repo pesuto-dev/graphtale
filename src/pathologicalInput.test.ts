@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { parseProcedure } from "./parseProcedure";
+import { copyFixPrompt, parseProcedure } from "./parseProcedure";
 import { parseSkill } from "./parseSkill";
 
 // Each body is close to the 256 KiB read limit. A quadratic regex takes tens of seconds
@@ -39,6 +39,18 @@ function skillWith(body: string): string {
   for (const route of ["a.md", "b.md"]) fs.writeFileSync(path.join(root, route), "# Route\n");
   return root;
 }
+
+it.skipIf(process.platform === "win32")("does not read a SKILL.md symlink to /dev/zero", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pathological-"));
+  roots.push(root);
+  fs.symlinkSync("/dev/zero", path.join(root, "SKILL.md"));
+  const started = performance.now();
+  const prompt = copyFixPrompt({ skillRoot: root, catalog: [], homedir: root });
+  parseProcedure({ skillRoot: root, catalog: [], homedir: root });
+  expect(() => parseSkill({ skillRoot: root, catalog: [], homedir: root })).toThrow(/regular file/);
+  expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+  expect(prompt).toContain("(unreadable)");
+});
 
 it.each(Object.entries(BODIES))("parses a SKILL.md with %s within the time budget", (_name, body) => {
   const root = skillWith(body);

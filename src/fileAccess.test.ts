@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { INPUT_READ_LIMIT_BYTES, INVENTORY_MAX_FILES, readRequiredText, readTextFile, walkTextFiles } from "./fileAccess";
+import { INPUT_READ_LIMIT_BYTES, INVENTORY_MAX_FILES, readJsonFile, readRequiredText, readTextFile, walkTextFiles } from "./fileAccess";
 import { parseSkill } from "./parseSkill";
 import { parseProcedure } from "./parseProcedure";
 const roots: string[] = [];
@@ -37,4 +37,13 @@ it("limits inventory depth and file count", () => {
   for (let i = 0; i <= INVENTORY_MAX_FILES; i++) fs.writeFileSync(path.join(dir, `${i}.md`), "x");
   expect(walkTextFiles(dir).files).toHaveLength(INVENTORY_MAX_FILES);
   expect(walkTextFiles(dir).warnings.join()).toMatch(/stopped/);
+});
+it("reads JSON only from a regular file within the limit", () => {
+  const dir = root();
+  const file = path.join(dir, "lock.json");
+  fs.writeFileSync(file, "{\"ok\":true}");
+  expect(readJsonFile(file)).toEqual({ ok: true });
+  expect(readJsonFile(dir)).toBeUndefined();
+  fs.writeFileSync(file, "x".repeat(INPUT_READ_LIMIT_BYTES + 1));
+  expect(readJsonFile(file)).toBeUndefined();
 });

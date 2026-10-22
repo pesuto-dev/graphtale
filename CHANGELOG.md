@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-22
+
+### Fixed
+
+- A SKILL.md that is not a regular file no longer hangs or exhausts the extension host while the fix prompt is built. A symlink to `/dev/zero`, a FIFO, or a file past the read limit shows `(unreadable)` instead of being hashed from disk.
+- Backup commands in the fix prompt quote the skill folder and the backup folder with POSIX and PowerShell single quotes, so `$(…)`, backticks, `"`, `'`, and `$var` in those paths are not executed.
+
+### Changed
+
+- The repair plan is built when the fix prompt is copied, not on every parse or refresh. The prompt says to copy it again after editing SKILL.md, so the recorded hash matches the file.
+- Installed-plugin and skills-lock JSON is read with the same regular-file check and size limit as other skill input.
+- The parent of a discovered skill is in the read scope only when that parent is a known skills folder (`.cursor/skills`, `.claude/skills`, `.agents/skills`, `.codex/skills`, or a Claude plugin cache `skills` directory).
+
 ## [0.3.1] - 2026-10-21
 
 ### Security
@@ -96,7 +109,8 @@ version; it was not released to npm, the Visual Studio Marketplace, or Open VSX.
 - Open a skill from the Command Palette, the Graphtale sidebar, or a `SKILL.md` editor or explorer action. **Refresh** reloads the open skill. **Open instruction**, **Open referenced resource**, and **Open file** return to the source.
 - Discovery of workspace and user skill roots used by Cursor, Claude Code, Codex, and `.agents/skills`, including skills recorded in Claude’s installed-plugins file.
 
-[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/pesuto-dev/graphtale/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/pesuto-dev/graphtale/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/pesuto-dev/graphtale/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/pesuto-dev/graphtale/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pesuto-dev/graphtale/compare/v0.1.1...v0.2.0

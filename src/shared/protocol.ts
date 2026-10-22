@@ -123,7 +123,7 @@ export type HostToWebview =
   | { type: "fileContent"; payload: FileContentPayload }
   | { type: "direction"; direction: LayoutDirection }
   | { type: "stale"; stale: boolean }
-  | { type: "copyResult"; ok: boolean }
+  | { type: "copyResult"; ok: boolean; text?: string }
   | { type: "error"; message: string; retryable: boolean };
 
 export type WebviewToHost =
@@ -176,7 +176,7 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
         record(wrapper) && identifier(wrapper.path) && text(wrapper.prefix) && text(wrapper.suffix));
     case "direction": return direction(value.direction);
     case "stale": return bool(value.stale);
-    case "copyResult": return bool(value.ok);
+    case "copyResult": return bool(value.ok) && optional(value.text, text);
     case "error": return text(value.message) && bool(value.retryable);
     default: return false;
   }
