@@ -8,6 +8,8 @@ import { isHostToWebview } from "./shared/protocol";
 type StepNode = { id: string; source?: { startLine: number } };
 type HostMessage = {
   type?: string;
+  ok?: boolean;
+  text?: string;
   graph?: unknown;
   procedure?: { nodes: StepNode[] };
   payload?: { notice?: string; text?: string };
@@ -68,8 +70,10 @@ it("preserves the last good graph on deletion, retries, and opens exact instruct
   expect(host.messages.at(-1)).toEqual({ type: "stale", stale: false });
   host.receive({ type: "copyText", text: "test" }); await new Promise(resolve => setImmediate(resolve));
   expect(host.messages.at(-1)).toEqual({ type: "copyResult", ok: true });
+  expect(host.clipboard).toHaveBeenCalledWith(expect.stringContaining("Graphtale"));
   host.clipboard.mockRejectedValueOnce(new Error("unavailable")); host.receive({ type: "copyText", text: "test" }); await new Promise(resolve => setImmediate(resolve));
-  expect(host.messages.at(-1)).toEqual({ type: "copyResult", ok: false });
+  expect(host.messages.at(-1)).toMatchObject({ type: "copyResult", ok: false });
+  expect(host.messages.at(-1)?.text).toContain("Graphtale");
   host.receive({ type: "openSkillFile" }); await new Promise(resolve => setImmediate(resolve));
   expect(host.open.mock.calls.at(-1)?.[0]).toMatchObject({ fsPath: skillFile });
   host.open.mockRejectedValueOnce(new Error("unavailable")); host.receive({ type: "openFile", nodeId: "step:1" }); await new Promise(resolve => setImmediate(resolve));

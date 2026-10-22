@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { MutableRefObject } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import {
   emptyDiagnosis,
   isHostToWebview,
@@ -20,7 +20,7 @@ export type HostMessageBindings = {
   viewRef: MutableRefObject<GraphView>;
   setGraph: (graph: SkillGraph) => void;
   setProcedure: (graph: SkillGraph) => void;
-  setDiagnosis: (diagnosis: ProcedureDiagnosis) => void;
+  setDiagnosis: Dispatch<SetStateAction<ProcedureDiagnosis>>;
   setView: (view: GraphView) => void;
   setDirection: (direction: LayoutDirection) => void;
   setExpandedIds: (ids: string[]) => void;
@@ -95,6 +95,10 @@ function applyHostMessage(bindings: HostMessageBindings, message: HostToWebview)
       bindings.setError({ message: message.message, retryable: message.retryable });
       return;
     case "copyResult":
+      if (!message.ok && message.text !== undefined) {
+        const prompt = message.text;
+        bindings.setDiagnosis((current) => ({ ...current, fixPrompt: prompt }));
+      }
       bindings.setCopyState(message.ok ? "copied" : "failed");
       if (message.ok) {
         setTimeout(() => bindings.setCopyState("idle"), 1600);

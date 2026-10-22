@@ -74,6 +74,38 @@ it("does not read an agent definition that is a symlink to elsewhere", () => {
   expect(catalogGraph(skill, home)).not.toContain(SECRET);
 });
 
+it("reads a sibling file when another skill sits in a known skills folder", () => {
+  const { base, skill, home } = layout({
+    "skills/demo/SKILL.md": "See [shared](../../tree/.claude/skills/common.md)\n",
+    "tree/.claude/skills/other/SKILL.md": "---\nname: other\n---\n",
+    "tree/.claude/skills/common.md": "Shared skill note\n",
+  });
+  const catalog = [{ id: "other", name: "other", description: "", rootPath: path.join(base, "tree", ".claude", "skills", "other") }];
+  expect(JSON.stringify(parseSkill({ skillRoot: skill, catalog, homedir: home }))).toContain("Shared skill note");
+});
+
+it("does not read the parent of a catalog skill outside a known skills folder", () => {
+  const { base, skill, home } = layout({
+    "skills/demo/SKILL.md": "See [secret](../../notes/secret.md)\n",
+    "notes/skill/SKILL.md": "---\nname: planted\n---\n",
+    "notes/secret.md": `${SECRET}\n`,
+  });
+  const catalog = [{ id: "planted", name: "planted", description: "", rootPath: path.join(base, "notes", "skill") }];
+  expect(inReadScope(path.join(base, "notes", "secret.md"), readScope({ skillRoot: skill, homedir: home, catalog }))).toBe(false);
+  expect(JSON.stringify(parseSkill({ skillRoot: skill, catalog, homedir: home }))).not.toContain(SECRET);
+});
+
+it("keeps a plugin cache skills folder in scope", () => {
+  const { skill, home } = layout({
+    "skills/demo/SKILL.md": "See [extra](../../home/.claude/plugins/cache/acme/tools/1.0.0/skills/extra.md)\n",
+    "home/.claude/plugins/cache/acme/tools/1.0.0/skills/demo-plugin/SKILL.md": "---\nname: plug\n---\n",
+    "home/.claude/plugins/cache/acme/tools/1.0.0/skills/extra.md": "Plugin extra\n",
+  });
+  const rootPath = path.join(home, ".claude", "plugins", "cache", "acme", "tools", "1.0.0", "skills", "demo-plugin");
+  const catalog = [{ id: "plug", name: "plug", description: "", rootPath }];
+  expect(JSON.stringify(parseSkill({ skillRoot: skill, catalog, homedir: home }))).toContain("Plugin extra");
+});
+
 it("does not build Flow from a workflow.md outside the read scope", () => {
   const { skill, home } = layout({
     "skills/demo/SKILL.md": "See [workflow](../../outside/workflow.md)\n",

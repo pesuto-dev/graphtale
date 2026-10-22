@@ -17,8 +17,8 @@ export function backupSteps(input: BackupInput): string[] {
   return [
     "Backup (make it yourself before you change any file; do not ask the user to do it):",
     `1. Copy the whole skill folder ${folder} to a new folder named after the current date and time under ${target}.`,
-    `   macOS/Linux: mkdir -p "${target}" && cp -R "${folder}" "${target}/$(date +%Y%m%d-%H%M%S)"`,
-    `   Windows (PowerShell): $b = Join-Path "${target}" (Get-Date -Format yyyyMMdd-HHmmss); New-Item -ItemType Directory -Force "${target}" | Out-Null; Copy-Item -Recurse "${folder}" $b`,
+    `   macOS/Linux: mkdir -p ${posixSingleQuote(target)} && cp -R ${posixSingleQuote(folder)} ${posixSingleQuote(target)}/$(date +%Y%m%d-%H%M%S)`,
+    `   Windows (PowerShell): $b = Join-Path ${powershellSingleQuote(target)} (Get-Date -Format yyyyMMdd-HHmmss); New-Item -ItemType Directory -Force ${powershellSingleQuote(target)} | Out-Null; Copy-Item -Recurse ${powershellSingleQuote(folder)} $b`,
     "   Never put the backup inside a skills folder or the skill itself.",
     `2. Before you change ${languages}, copy it next to itself as languages.json.<date-time>.bak.`,
     "3. Check that every file in the backup has the same SHA-256 as the original. Do not edit until it does.",
@@ -34,6 +34,16 @@ function realFolder(skillFile: string): string {
   } catch {
     return folder;
   }
+}
+
+/** POSIX single quotes. A quote inside the path is `'\''`, so `$(…)`, backticks and `$var` stay literal. */
+function posixSingleQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+/** PowerShell single quotes. A quote inside the path is doubled, and nothing else expands. */
+function powershellSingleQuote(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
 }
 
 /** A folder name that is safe on every platform. */

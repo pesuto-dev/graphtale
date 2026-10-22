@@ -1,6 +1,6 @@
 import * as os from "node:os";
 import * as path from "node:path";
-import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS } from "./fileAccess";
+import { readTextFile, INPUT_READ_LIMIT_BYTES, FLOW_MAX_STEPS, type TextFileResult } from "./fileAccess";
 import { parseFrontmatter } from "./frontmatter";
 import { procedureFromHeadings } from "./headingFallback";
 import type { CatalogSkill, ProcedureDiagnosis, ProcedureResult, SkillGraph } from "./shared/protocol";
@@ -32,10 +32,23 @@ interface ProcedureLoad {
   linked?: string;
   vocabulary: Vocabulary;
   catalog: CatalogSkill[];
+  /** Build the repair plan. Parse and refresh leave this off; copying the prompt turns it on. */
+  includePlan: boolean;
+  /** Complete SKILL.md text from readTextFile, before BOM stripping. Absent when that read did not yield a regular file. */
+  skillHashText?: string;
 }
 
 export function parseProcedure(options: ParseProcedureOptions): ProcedureResult {
-  const loaded = loadProcedure(options);
+  return procedureFrom(options, false);
+}
+
+/** The prompt Copy fix prompt puts on the clipboard. The repair plan is built here, not on parse or refresh. */
+export function copyFixPrompt(options: ParseProcedureOptions): string {
+  return procedureFrom(options, true).diagnosis.fixPrompt;
+}
+
+function procedureFrom(options: ParseProcedureOptions, includePlan: boolean): ProcedureResult {
+  const loaded = loadProcedure(options, includePlan);
   for (const candidate of loaded.candidates) {
     const result = procedureFromCandidate(loaded, candidate);
     if (result) return result;
@@ -43,7 +56,7 @@ export function parseProcedure(options: ParseProcedureOptions): ProcedureResult 
   return procedureWithoutSteps(loaded);
 }
 
-function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
+function loadProcedure(options: ParseProcedureOptions, includePlan: boolean): ProcedureLoad {
   const skillRoot = path.resolve(options.skillRoot);
   const skillFile = path.join(skillRoot, "SKILL.md");
   const warnings: string[] = [];
@@ -52,7 +65,9 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
     if (result.warning) warnings.push(result.warning);
     return stripBom(result.text);
   };
-  const skillText = readInput(skillFile);
+  const skillRead = readTextFile(skillFile, INPUT_READ_LIMIT_BYTES);
+  if (skillRead.warning) warnings.push(skillRead.warning);
+  const skillText = stripBom(skillRead.text);
   const meta = parseFrontmatter(skillText);
   if (meta.error) warnings.push(`SKILL.md: ${meta.error}`);
   const homedir = options.homedir ?? os.homedir();
@@ -68,7 +83,15 @@ function loadProcedure(options: ParseProcedureOptions): ProcedureLoad {
     linked: workflowPath ?? operationsPath,
     vocabulary: languages.vocabulary,
     catalog: options.catalog,
+    includePlan,
+    skillHashText: hashText(skillRead),
   };
+}
+
+/** Text whose SHA-256 matches the file. A warning means the read was not that file. */
+function hashText(read: TextFileResult): string | undefined {
+  if (read.warning) return undefined;
+  return read.text;
 }
 
 interface ProcedureCandidateSource {
@@ -178,7 +201,7 @@ function finish(loaded: ProcedureLoad, graph: SkillGraph, diagnosis: ProcedureDi
     skillFile: loaded.skillFile,
     languagesFile: languagesFile(loaded.homedir),
     languages: loaded.vocabulary.languages,
-    plan: confidence === "high" ? undefined : planFor(loaded, origin),
+    plan: loaded.includePlan && confidence !== "high" ? planFor(loaded, origin) : undefined,
   });
   return { graph: { ...graph, warnings: notes }, diagnosis: { ...diagnosis, confidence, message, fixPrompt } };
 }
@@ -194,6 +217,7 @@ function planFor(loaded: ProcedureLoad, origin: RepairOrigin): RepairPlanText {
     homedir: loaded.homedir,
     origin,
     workflowFile: loaded.candidates.find((candidate) => /workflow\.md$/i.test(candidate.path))?.path,
+    ...(loaded.skillHashText !== undefined ? { skillHashText: loaded.skillHashText } : {}),
   });
 }
 

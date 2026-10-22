@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { parseProcedure } from "./parseProcedure";
+import { copyFixPrompt, parseProcedure } from "./parseProcedure";
 import { DONE_BANNER, WORKFLOW_LINK } from "./repairPlan";
 import { COPY_TEXT_LIMIT } from "./shared/protocol";
 
@@ -26,8 +26,12 @@ function parse(root: string) {
   return parseProcedure({ skillRoot: root, catalog: [], homedir: root });
 }
 
+function copied(root: string): string {
+  return copyFixPrompt({ skillRoot: root, catalog: [], homedir: root });
+}
+
 function plan(files: Record<string, string>): string {
-  return parse(skill(files)).diagnosis.fixPrompt;
+  return copied(skill(files));
 }
 
 const lanes = [
@@ -61,8 +65,10 @@ it("numbers the plan without gaps", () => {
 it("puts a verifier with the current SKILL.md hash in the plan", () => {
   const root = skill({ "SKILL.md": lanes });
   const hash = createHash("sha256").update(fs.readFileSync(path.join(root, "SKILL.md"))).digest("hex");
-  const prompt = parse(root).diagnosis.fixPrompt;
+  const prompt = copied(root);
+  expect(parse(root).diagnosis.fixPrompt).not.toContain("SKILL.md is now");
   expect(prompt).toContain(`SKILL.md is now ${hash}.`);
+  expect(prompt).toContain("Copy the prompt again after editing SKILL.md.");
   expect(prompt).toContain(`1. Only allowed changes: SKILL.md differs only by the empty line and the line "${WORKFLOW_LINK}", and references/workflow.md is new.`);
   expect(prompt).toContain("4. Same meaning:");
 });
@@ -70,7 +76,7 @@ it("puts a verifier with the current SKILL.md hash in the plan", () => {
 it("reaches an explicit flow when the planned file and link are written", () => {
   const text = ["# One", "", "## Process", "", "1. Plan the work.", "2. Build if approved.", "3. Ship."].join("\n");
   const root = skill({ "SKILL.md": text });
-  expect(parse(root).diagnosis.fixPrompt).toContain("Create references/workflow.md");
+  expect(copied(root)).toContain("Create references/workflow.md");
   const workflow = ["# Workflow", "", "```", "P   Plan the work      this loop", "N1  Build              this loop", "N2  Ship               this loop", "```", "", "## Connections", "", "```text", "P -> N1 (approved)", "P -> N2 (not approved)", "N1 -> N2", "```"].join("\n");
   fs.writeFileSync(path.join(root, "SKILL.md"), text.replace("# One", `# One\n\n${WORKFLOW_LINK}`));
   fs.mkdirSync(path.join(root, "references"));
@@ -124,8 +130,10 @@ it("tells Flow's warning apart from a missing order", () => {
   const root = skill({ "SKILL.md": ["# Fine", "", "## Workflow", "", "1. Plan.", "2. Build."].join("\n"), ".graphtale/languages.json": "{ broken" });
   const { diagnosis } = parse(root);
   expect(diagnosis.confidence).toBe("partial");
-  expect(diagnosis.fixPrompt).toContain("1. Flow already reads an explicit step order. Do not restructure the skill.");
-  expect(diagnosis.fixPrompt).not.toContain("Create references/workflow.md");
+  const prompt = copied(root);
+  expect(prompt).toContain("1. Flow already reads an explicit step order. Do not restructure the skill.");
+  expect(prompt).not.toContain("Create references/workflow.md");
+  expect(diagnosis.fixPrompt).not.toContain("Repair (do exactly this):");
 });
 
 it("repairs P/N rows in the file that holds them", () => {
@@ -229,11 +237,12 @@ it("keeps the fix prompt under the copy limit for a large skill", () => {
 
 it("has the model back up the real skill folder outside every skills folder before editing", () => {
   const root = skill({ "SKILL.md": lanes });
-  const prompt = parse(root).diagnosis.fixPrompt;
+  const prompt = copied(root);
+  const folder = fs.realpathSync(root);
   const target = path.join(root, ".graphtale", "backups", "lanes");
   expect(prompt).toContain("Backup (make it yourself before you change any file; do not ask the user to do it):");
-  expect(prompt).toContain(`cp -R "${fs.realpathSync(root)}" "${target}/$(date +%Y%m%d-%H%M%S)"`);
-  expect(prompt).toContain("Copy-Item -Recurse");
+  expect(prompt).toContain(`mkdir -p '${target}' && cp -R '${folder}' '${target}'/$(date +%Y%m%d-%H%M%S)`);
+  expect(prompt).toContain(`Copy-Item -Recurse '${folder}'`);
   expect(prompt).toContain("Never put the backup inside a skills folder or the skill itself.");
   expect(prompt.indexOf("Backup (make it yourself")).toBeLessThan(prompt.indexOf("Repair (do exactly this):"));
 });

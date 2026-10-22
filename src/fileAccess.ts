@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { stripBom } from "./text";
 
 /** Largest document used as parser input. SKILL.md above this is rejected. */
 export const INPUT_READ_LIMIT_BYTES = 256 * 1024;
@@ -162,10 +163,12 @@ function uniqueWarnings(warnings: string[]): string[] {
   return [...new Set(warnings)];
 }
 
-/** Parsed JSON, or undefined when the file is missing or not valid JSON; callers decide what that means. */
+/** Parsed JSON, or undefined when the file is missing, not a regular file, over the read limit, or not valid JSON. */
 export function readJsonFile(filePath: string): unknown {
+  const read = readTextFile(filePath, INPUT_READ_LIMIT_BYTES);
+  if (read.warning) return undefined;
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const parsed: unknown = JSON.parse(stripBom(read.text));
     return parsed;
   } catch {
     return undefined;

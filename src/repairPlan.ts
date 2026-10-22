@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { numberedLists, skipTitle, titleLine, type NumberedList } from "./procedureLists";
 import type { Vocabulary } from "./procedureVocabulary";
@@ -39,6 +38,11 @@ export interface RepairInput {
   origin: RepairOrigin;
   /** An existing workflow.md among the instruction files, absolute. */
   workflowFile?: string;
+  /**
+   * SKILL.md text `readTextFile` already returned, only when that read was a
+   * complete regular file. Omitted when the file was missing, not regular, or truncated.
+   */
+  skillHashText?: string;
 }
 
 type Change =
@@ -192,7 +196,7 @@ function verifier(input: RepairInput, change: Change): string[] {
   return [
     change.kind === "agreed" ? "If you edit anything, verify before you show the diff:" : "Verify before you show the diff. Run every check; if one fails, fix it and run all checks again.",
     "If you can start a second agent or reviewer, let it run these checks on your result independently.",
-    `0. Before you edit, record the SHA-256 of every file in the skill folder (macOS/Linux: shasum -a 256 <file>; Windows: Get-FileHash <file>). SKILL.md is now ${fileHash(input.skillFile) ?? "(unreadable)"}.`,
+    `0. Before you edit, record the SHA-256 of every file in the skill folder (macOS/Linux: shasum -a 256 <file>; Windows: Get-FileHash <file>). SKILL.md is now ${fileHash(input.skillHashText) ?? "(unreadable)"}. Copy the prompt again after editing SKILL.md.`,
     ...changeChecks(change),
   ];
 }
@@ -218,10 +222,8 @@ function workflowAllowed(change: Extract<Change, { kind: "workflow" }>): string 
   return `${skill}, and ${target}`;
 }
 
-function fileHash(file: string): string | undefined {
-  try {
-    return createHash("sha256").update(fs.readFileSync(file)).digest("hex");
-  } catch {
-    return undefined;
-  }
+/** SHA-256 of text already read. No second read, so a device or a huge file cannot hang the host. */
+function fileHash(text: string | undefined): string | undefined {
+  if (text === undefined) return undefined;
+  return createHash("sha256").update(text).digest("hex");
 }

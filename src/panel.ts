@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import { readTextFile, PREVIEW_READ_LIMIT_BYTES } from "./fileAccess";
 import { resolveOpenTarget } from "./viewerAccess";
 import { discoverSkills } from "./discover";
-import { parseProcedure } from "./parseProcedure";
+import { copyFixPrompt, parseProcedure } from "./parseProcedure";
 import { languagesFile } from "./procedureVocabulary";
 import { parseSkill, wrapperAroundLink } from "./parseSkill";
 import { OUTSIDE_SCOPE_NOTICE, inReadScope, readScope } from "./readScope";
@@ -269,11 +269,23 @@ export class GraphtalePanel {
   }
 
   private async copyText(text: string): Promise<void> {
+    const prompt = this.textToCopy(text);
     try {
-      await vscode.env.clipboard.writeText(text);
+      await vscode.env.clipboard.writeText(prompt);
       this.post({ type: "copyResult", ok: true });
     } catch {
-      this.post({ type: "copyResult", ok: false });
+      this.post({ type: "copyResult", ok: false, text: prompt });
+    }
+  }
+
+  /** The repair plan is built here, so parse and refresh do not hash the skill. */
+  private textToCopy(text: string): string {
+    const root = this.graph?.rootPath;
+    if (!root) return text;
+    try {
+      return copyFixPrompt({ skillRoot: root, catalog: this.catalog, workspaceFolders: workspaceFolderPaths() });
+    } catch {
+      return text;
     }
   }
 
