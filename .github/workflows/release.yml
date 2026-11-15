@@ -1,10 +1,12 @@
 # On a v* tag: runs the full CI checks, then publishes the VSIX those checks built to
-# Open VSX, to the Visual Studio Marketplace when VSCE_PAT is set, and to the GitHub
+# Open VSX, to the Visual Studio Marketplace via Entra ID (OIDC), and to the GitHub
 # Release. The pesuto Open VSX namespace already exists; this workflow does not create
-# it. Set repository secret OVSX_PAT before pushing the tag. VSCE_PAT is optional:
-# without it, Marketplace publish is skipped.
+# it. Set repository secret OVSX_PAT before pushing the tag. Marketplace publish uses
+# AZURE_CLIENT_ID and AZURE_TENANT_ID with azure/login and vsce --azure-credential.
+# VSCE_PAT stays as a repository secret until the first successful Entra ID release;
+# this workflow no longer passes it to vsce.
 # Run it by hand (workflow_dispatch) for a dry run: every job and step runs except the
-# three publish steps.
+# three publish steps (and the Azure login used only for Marketplace publish).
 name: Release
 
 on:
@@ -54,6 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -106,19 +109,24 @@ jobs:
       # Best-effort and after Open VSX. continue-on-error lets the GitHub
       # Release step run when Marketplace publish fails, without turning the
       # job red and inviting a re-run that would publish the same version to
-      # Open VSX again. A missing token exits 0 with a notice.
+      # Open VSX again.
+      # VSCE_PAT stays as a repository secret (fallback) until the first
+      # successful Entra ID release; this command no longer uses it.
+      - name: Sign in to Azure (Marketplace)
+        if: github.event_name == 'push'
+        continue-on-error: true
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
       - name: Publish to Visual Studio Marketplace
         if: github.event_name == 'push'
         continue-on-error: true
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          if [ -z "${VSCE_PAT}" ]; then
-            echo "::notice title=Marketplace skipped::VSCE_PAT is not set. Skipping Visual Studio Marketplace publish. Open VSX and the GitHub Release still run."
-            exit 0
-          fi
-          if ! npx --no-install vsce publish --packagePath "${{ steps.vsix.outputs.path }}" -p "${VSCE_PAT}"; then
-            echo "::error title=Marketplace publish failed::vsce publish failed for ${{ steps.vsix.outputs.path }}. Open VSX already received this VSIX. The GitHub Release step still runs. Fix the publisher or VSCE_PAT, then publish this same VSIX with vsce publish --packagePath."
+          if ! npx --no-install vsce publish --packagePath "${{ steps.vsix.outputs.path }}" --azure-credential; then
+            echo "::error title=Marketplace publish failed::vsce publish failed for ${{ steps.vsix.outputs.path }}. Open VSX already received this VSIX. The GitHub Release step still runs. Fix the Entra ID federated credential or publisher access, then publish this same VSIX with vsce publish --packagePath --azure-credential."
             exit 1
           fi
 
